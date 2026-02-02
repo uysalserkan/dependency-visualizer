@@ -1,0 +1,114 @@
+# Alert Rules for Import Visualizer
+
+groups:
+  - name: import_visualizer_alerts
+    interval: 30s
+    rules:
+      # High error rate
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(analysis_requests_total{status="error"}[5m]) 
+            / 
+            rate(analysis_requests_total[5m])
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: import-visualizer
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      # Very high error rate
+      - alert: CriticalErrorRate
+        expr: |
+          (
+            rate(analysis_requests_total{status="error"}[5m]) 
+            / 
+            rate(analysis_requests_total[5m])
+          ) > 0.20
+        for: 2m
+        labels:
+          severity: critical
+          service: import-visualizer
+        annotations:
+          summary: "Critical error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 20%)"
+
+      # Slow response time
+      - alert: SlowResponseTime
+        expr: |
+          histogram_quantile(0.95, 
+            rate(analysis_duration_seconds_bucket[5m])
+          ) > 30
+        for: 10m
+        labels:
+          severity: warning
+          service: import-visualizer
+        annotations:
+          summary: "Slow analysis response time"
+          description: "P95 response time is {{ $value }}s (threshold: 30s)"
+
+      # Very slow response time
+      - alert: VerySlowResponseTime
+        expr: |
+          histogram_quantile(0.95, 
+            rate(analysis_duration_seconds_bucket[5m])
+          ) > 60
+        for: 5m
+        labels:
+          severity: critical
+          service: import-visualizer
+        annotations:
+          summary: "Very slow analysis response time"
+          description: "P95 response time is {{ $value }}s (threshold: 60s)"
+
+      # Low cache hit ratio
+      - alert: LowCacheHitRatio
+        expr: |
+          (
+            sum(rate(cache_hits_total[5m])) 
+            / 
+            (sum(rate(cache_hits_total[5m])) + sum(rate(cache_misses_total[5m])))
+          ) < 0.50
+        for: 15m
+        labels:
+          severity: warning
+          service: import-visualizer
+        annotations:
+          summary: "Low cache hit ratio"
+          description: "Cache hit ratio is {{ $value | humanizePercentage }} (threshold: 50%)"
+
+      # Service down
+      - alert: ServiceDown
+        expr: up{job="import-visualizer-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: import-visualizer
+        annotations:
+          summary: "Import Visualizer backend is down"
+          description: "The backend service has been down for more than 1 minute"
+
+      # High memory cache usage
+      - alert: HighMemoryCacheUsage
+        expr: memory_cache_size > 90
+        for: 10m
+        labels:
+          severity: warning
+          service: import-visualizer
+        annotations:
+          summary: "Memory cache near capacity"
+          description: "Memory cache has {{ $value }} items (capacity: 100)"
+
+      # Too many active analyses
+      - alert: TooManyActiveAnalyses
+        expr: active_analyses > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: import-visualizer
+        annotations:
+          summary: "High number of concurrent analyses"
+          description: "{{ $value }} analyses are currently running (threshold: 10)"
