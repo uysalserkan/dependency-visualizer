@@ -1,11 +1,12 @@
 # Import Visualizer
 
-A modern web application for visualizing import dependencies in **Python, JavaScript, and TypeScript** projects. Understand your project structure through interactive, beautiful graphs.
+A modern web application for visualizing import dependencies in **Python, JavaScript, TypeScript, and Go** projects. Understand your project structure through interactive, beautiful graphs.
 
 **Supported Languages:**
 - **Python** (`.py`) - Full AST parsing with relative/absolute import resolution
 - **JavaScript** (`.js`, `.jsx`, `.mjs`, `.cjs`) - ES6 imports, CommonJS require, dynamic imports
 - **TypeScript** (`.ts`, `.tsx`) - All JS features + type imports, path aliases (`@/`, `~/`)
+- **Go** (`.go`) - Module-based imports, stdlib detection, internal packages
 
 ![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)
@@ -37,13 +38,14 @@ A modern web application for visualizing import dependencies in **Python, JavaSc
 - ⚡ **Parallel Processing** - 5-10x faster analysis with multiprocessing
 - 💾 **SQLite Caching** - Persistent results across sessions
 - 🌙 **Dark Mode** - Complete theme support with toggle
-- ⌨️ **Keyboard Shortcuts** - Cmd+K for search, Esc to clear
+- ⌨️ **Keyboard Shortcuts** - Cmd+K for search, Esc to clear/exit
+- 🖥️ **Full Screen Mode** - Immersive graph view with one click
 - ✅ **Comprehensive Tests** - >80% code coverage
 - 🎯 **Loading Indicators** - Better UX with progress feedback
 
 ### Phase 4 Features (NEW) 🌍
-- 🌐 **Multi-Language Support** - Python, JavaScript, and TypeScript
-- 🎯 **Smart Import Resolution** - Relative paths, path aliases (`@/`, `~/`), index files
+- 🌐 **Multi-Language Support** - Python, JavaScript, TypeScript, and Go
+- 🎯 **Smart Import Resolution** - Relative paths, path aliases, Go modules
 - 📦 **Repository Analysis** - Analyze projects from Git URLs (GitHub, GitLab, Bitbucket, private servers)
 - 🔌 **Plugin System** - Extensible architecture for custom parsers
 - 🛠️ **CLI Tool** - Command-line interface for CI/CD
@@ -422,6 +424,7 @@ Create tests in `backend/tests/test_ruby_resolver.py` and verify resolution work
 **Examples:**
 - ✅ **Python**: Relative imports (`.module`), absolute imports, `__init__.py` packages
 - ✅ **JavaScript/TypeScript**: Relative (`./`, `../`), path aliases (`@/`, `~/`), index files, tsconfig.json
+- ✅ **Go**: Module imports, stdlib detection, internal packages, go.mod parsing
 
 ## Roadmap
 
