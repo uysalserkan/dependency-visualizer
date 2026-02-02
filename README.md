@@ -1,12 +1,13 @@
 # Import Visualizer
 
-A modern web application for visualizing import dependencies in **Python, JavaScript, TypeScript, and Go** projects. Understand your project structure through interactive, beautiful graphs.
+A modern web application for visualizing import dependencies in **Python, JavaScript, TypeScript, Go, and Java** projects. Understand your project structure through interactive, beautiful graphs.
 
 **Supported Languages:**
 - **Python** (`.py`) - Full AST parsing with relative/absolute import resolution
 - **JavaScript** (`.js`, `.jsx`, `.mjs`, `.cjs`) - ES6 imports, CommonJS require, dynamic imports
 - **TypeScript** (`.ts`, `.tsx`) - All JS features + type imports, path aliases (`@/`, `~/`)
 - **Go** (`.go`) - Module-based imports, stdlib detection, internal packages
+- **Java** (`.java`) - Maven/Gradle/Plain Java projects, package-based resolution, static imports
 
 ![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)
@@ -44,8 +45,8 @@ A modern web application for visualizing import dependencies in **Python, JavaSc
 - 🎯 **Loading Indicators** - Better UX with progress feedback
 
 ### Phase 4 Features (NEW) 🌍
-- 🌐 **Multi-Language Support** - Python, JavaScript, TypeScript, and Go
-- 🎯 **Smart Import Resolution** - Relative paths, path aliases, Go modules
+- 🌐 **Multi-Language Support** - Python, JavaScript, TypeScript, Go, and Java
+- 🎯 **Smart Import Resolution** - Relative paths, path aliases, Go modules, Maven/Gradle
 - 📦 **Repository Analysis** - Analyze projects from Git URLs (GitHub, GitLab, Bitbucket, private servers)
 - 🔌 **Plugin System** - Extensible architecture for custom parsers
 - 🛠️ **CLI Tool** - Command-line interface for CI/CD
