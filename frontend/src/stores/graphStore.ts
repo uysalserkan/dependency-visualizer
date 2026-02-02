@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { Core } from 'cytoscape'
 import type { AnalysisResult, Node } from '@/types/api'
 
 export type NodeSizeMode = 'degree' | 'fixed'
@@ -22,8 +23,11 @@ interface GraphState {
   nodeShape: NodeShapeType
   layoutAnimation: boolean
   fitRequest: number
+  /** Cytoscape instance for client-side PNG export; set by GraphVisualization, cleared on unmount. */
+  cyInstance: Core | null
 
   setAnalysis: (analysis: AnalysisResult | null) => void
+  setCyInstance: (cy: Core | null) => void
   setSelectedNode: (node: Node | null) => void
   setSearchQuery: (query: string) => void
   setLayoutName: (layout: string) => void
@@ -52,8 +56,10 @@ export const useGraphStore = create<GraphState>((set) => ({
   nodeShape: 'ellipse',
   layoutAnimation: true,
   fitRequest: 0,
+  cyInstance: null,
 
-  setAnalysis: (analysis) => set({ analysis, selectedNode: null }),
+  setAnalysis: (analysis) => set({ analysis, selectedNode: null, cyInstance: null }),
+  setCyInstance: (cy) => set({ cyInstance: cy }),
   setSelectedNode: (node) => set({ selectedNode: node }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setLayoutName: (layout) => set({ layoutName: layout }),

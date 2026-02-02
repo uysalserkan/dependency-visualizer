@@ -2,9 +2,9 @@ import { useEffect } from 'react'
 import { useGraphStore } from '@/stores/graphStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
-import { ProjectSelector } from '@/components/ProjectSelector'
-import { RepositorySelector } from '@/components/RepositorySelector'
+import { SourceAnalyzer } from '@/components/SourceAnalyzer'
 import { ImportGraph } from '@/components/ImportGraph'
+import { CollapsibleSection } from '@/components/CollapsibleSection'
 import { GraphVisualization } from '@/components/GraphVisualization'
 import { ControlPanel } from '@/components/ControlPanel'
 import { MetricsPanel } from '@/components/MetricsPanel'
@@ -71,9 +71,8 @@ function App() {
                   Map import relationships across your codebase with interactive visualizations.
                 </p>
               </div>
-              <div className="pt-8 grid gap-6 sm:grid-cols-1 lg:grid-cols-2 max-w-4xl mx-auto">
-                <ProjectSelector />
-                <RepositorySelector />
+              <div className="pt-8 max-w-xl mx-auto">
+                <SourceAnalyzer />
               </div>
               <p className="text-sm text-gray-500 dark:text-slate-500 leading-relaxed pt-4 font-mono-ui">
                 Supports Python, JavaScript, TypeScript • Export in multiple formats
@@ -93,9 +92,12 @@ function App() {
             {!isFullScreen && (
               <aside className="xl:col-span-2 space-y-5 overflow-y-auto" aria-label="Analysis controls">
                 <ProjectFolderTree />
-                <ProjectSelector />
-                <RepositorySelector />
-                <ImportGraph />
+                <CollapsibleSection title="Source" defaultOpen={false}>
+                  <SourceAnalyzer />
+                </CollapsibleSection>
+                <CollapsibleSection title="Import graph" defaultOpen={false}>
+                  <ImportGraph />
+                </CollapsibleSection>
                 <ControlPanel />
               </aside>
             )}

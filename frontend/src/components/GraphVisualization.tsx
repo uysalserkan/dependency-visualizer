@@ -38,6 +38,7 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
   const {
     selectedNode,
     setSelectedNode,
+    setCyInstance,
     layoutName,
     showStdlibNodes,
     showExternalPackages,
@@ -152,6 +153,7 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
     })
 
     cyRef.current = cy
+    setCyInstance(cy)
 
     // Node click handler: set full node from analysis so MetricsPanel has import_count, imported_by_count, pagerank, etc.
     const nodeById = new Map(nodes.map((n) => [n.id, n]))
@@ -191,9 +193,10 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
     })
 
     return () => {
+      setCyInstance(null)
       cy.destroy()
     }
-  }, [analysis, layoutName, showStdlibNodes, showExternalPackages, setSelectedNode])
+  }, [analysis, layoutName, showStdlibNodes, showExternalPackages, setSelectedNode, setCyInstance])
 
   // Update style when display options change (no graph recreation)
   useEffect(() => {
