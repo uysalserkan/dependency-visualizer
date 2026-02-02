@@ -1,0 +1,31 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app
+      # Mount host filesystem for project analysis
+      - ${HOME}:${HOME}:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      # Extractor: auto (use Go if available), python, or go
+      - EXTRACTOR_BACKEND=${EXTRACTOR_BACKEND:-auto}
+      - GO_EXTRACTOR_PATH=/usr/local/bin/extractor
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://backend:8000
+    restart: unless-stopped
