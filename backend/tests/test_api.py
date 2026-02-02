@@ -122,8 +122,14 @@ def test_get_insights(temp_project):
     assert "health_score" in data
     assert "health_status" in data
     assert "insights" in data
+    assert "summary" in data
     assert "recommendations" in data
     assert 0 <= data["health_score"] <= 100
+    summary = data["summary"]
+    assert "total_files" in summary
+    assert "circular_dependencies" in summary
+    assert "isolated_modules" in summary
+    assert "max_depth" in summary
 
 
 def test_export_json(temp_project):

@@ -121,7 +121,7 @@
 
 ### High priority
 1. **Insights API contract** — Backend returns `issues` and `statistics`; frontend expects `insights` and `summary`. Update backend DTO or frontend types and `InsightsPanel` so the health panel works correctly. **Files:** `backend/app/api/models.py` (InsightsResponse), `backend/app/api/routes.py` (insights endpoint), `frontend/src/types/api.ts`, `frontend/src/components/InsightsPanel.tsx`.
-2. **Error boundary** — Wrap main content in an error boundary so a single component failure doesn’t blank the app. **File:** `frontend/src/App.tsx` (or a new `ErrorBoundary.tsx` and use in `main.tsx`).
+2. **Error boundary** — ✅ Done. Root wrapped in `ErrorBoundary` in `main.tsx`; component at `src/components/ErrorBoundary.tsx`. (Previously: wrap main content in an error boundary so a single component failure doesn’t blank the app. **File:** `frontend/src/App.tsx` (or a new `ErrorBoundary.tsx` and use in `main.tsx`).
 
 ### Medium priority
 3. **Remove or use GraphQL** — `src/lib/graphql.ts` and urql/graphql are unused; all data is REST. Either remove the GraphQL client and deps or add a feature that uses it (e.g. analysis by ID) and document the choice.
@@ -140,7 +140,8 @@
 | Path | Purpose |
 |------|--------|
 | `src/App.tsx` | Root layout, conditional project selector vs. dashboard |
-| `src/main.tsx` | React root, QueryClientProvider |
+| `src/main.tsx` | React root, ErrorBoundary, QueryClientProvider |
+| `src/components/ErrorBoundary.tsx` | Error boundary; fallback UI and retry |
 | `src/stores/graphStore.ts` | Analysis, selected node, layout, filters |
 | `src/stores/themeStore.ts` | Dark mode + persist |
 | `src/lib/api.ts` | REST client |

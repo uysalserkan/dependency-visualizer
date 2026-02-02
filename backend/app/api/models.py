@@ -209,16 +209,55 @@ class AnalysisResultResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list, description="Analysis warnings")
 
 
+class InsightItem(BaseModel):
+    """Single insight for frontend Project Health panel."""
+
+    type: Literal["warning", "info", "success"] = Field(
+        ..., description="Display type"
+    )
+    title: str = Field(..., description="Short title")
+    description: str = Field(..., description="Explanation")
+    severity: Literal["high", "medium", "low"] = Field(
+        ..., description="Severity"
+    )
+
+
+class InsightsSummary(BaseModel):
+    """Summary stats for frontend Project Health panel."""
+
+    total_files: int = Field(..., description="Number of files analyzed")
+    circular_dependencies: int = Field(
+        ..., description="Count of circular dependency groups"
+    )
+    isolated_modules: int = Field(
+        ..., description="Count of modules with no incoming imports"
+    )
+    max_depth: int = Field(..., description="Maximum import depth")
+
+
 class InsightsResponse(BaseModel):
     """Response model for the insights endpoint."""
 
     health_score: int = Field(..., ge=0, le=100, description="Overall health score 0-100")
     health_status: str = Field(..., description="Status label (e.g. excellent, good, fair, poor)")
-    issues: list[dict[str, Any]] = Field(default_factory=list, description="Detected issues")
+    insights: list[InsightItem] = Field(
+        default_factory=list,
+        description="Structured insights for UI (title, description, severity)",
+    )
     recommendations: list[dict[str, Any]] = Field(
         default_factory=list, description="Recommendations"
     )
-    statistics: dict[str, Any] = Field(default_factory=dict, description="Import statistics")
+    summary: InsightsSummary = Field(
+        ...,
+        description="Summary stats (total_files, circular_dependencies, isolated_modules, max_depth)",
+    )
+    # Legacy / optional: raw issues and statistics for backward compatibility
+    issues: list[dict[str, Any]] = Field(
+        default_factory=list, description="Detected issues (raw)"
+    )
+    statistics: dict[str, Any] = Field(
+        default_factory=dict, description="Import statistics (raw)"
+    )
 
 
 class ErrorResponse(BaseModel):

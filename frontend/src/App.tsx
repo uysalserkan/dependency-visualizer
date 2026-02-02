@@ -11,6 +11,7 @@ import { MetricsPanel } from '@/components/MetricsPanel'
 import { InsightsPanel } from '@/components/InsightsPanel'
 import { ExportButton } from '@/components/ExportButton'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { ProjectFolderTree } from '@/components/ProjectFolderTree'
 import { Network } from 'lucide-react'
 
 function App() {
@@ -91,6 +92,7 @@ function App() {
           >
             {!isFullScreen && (
               <aside className="xl:col-span-2 space-y-5 overflow-y-auto" aria-label="Analysis controls">
+                <ProjectFolderTree />
                 <ProjectSelector />
                 <RepositorySelector />
                 <ImportGraph />

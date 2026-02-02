@@ -11,7 +11,9 @@ from app.api.models import (
     AnalysisResult,
     AnalysisResultResponse,
     FilePreview,
+    InsightItem,
     InsightsResponse,
+    InsightsSummary,
     ImportInfo,
 )
 from app.config import settings
@@ -446,13 +448,44 @@ async def get_insights(
             })
         
         health_score = max(0, min(100, health_score))
-        
+        health_status = (
+            "excellent" if health_score >= 90
+            else "good" if health_score >= 70
+            else "fair" if health_score >= 50
+            else "poor"
+        )
+
+        # Map issues to frontend InsightItem (type, title, description, severity)
+        def _issue_to_insight(issue: dict) -> InsightItem:
+            severity = issue.get("severity", "medium")
+            if severity not in ("high", "medium", "low"):
+                severity = "medium"
+            msg = issue.get("message", "")
+            insight_type = "warning" if severity in ("high", "medium") else "info"
+            return InsightItem(
+                type=insight_type,
+                title=msg[:80] if len(msg) > 80 else msg or "Issue",
+                description=msg,
+                severity=severity,
+            )
+
+        insights = [_issue_to_insight(i) for i in issues]
+        stats_dict = metrics.statistics.dict() if metrics.statistics else {}
+        summary = InsightsSummary(
+            total_files=metrics.total_files,
+            circular_dependencies=len(metrics.circular_dependencies),
+            isolated_modules=len(metrics.isolated_modules),
+            max_depth=metrics.max_import_depth,
+        )
+
         return InsightsResponse(
             health_score=health_score,
-            health_status="excellent" if health_score >= 90 else "good" if health_score >= 70 else "fair" if health_score >= 50 else "poor",
-            issues=issues,
+            health_status=health_status,
+            insights=insights,
             recommendations=recommendations,
-            statistics=metrics.statistics.dict() if metrics.statistics else {},
+            summary=summary,
+            issues=issues,
+            statistics=stats_dict,
         )
     
     except NotFoundError as e:
