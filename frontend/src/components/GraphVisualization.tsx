@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useMemo } from 'react'
 import cytoscape, { type Core, type NodeSingular } from 'cytoscape'
 // @ts-expect-error - cytoscape-cola has no types
 import cola from 'cytoscape-cola'
-import { useGraphStore } from '@/stores/graphStore'
+import { useGraphStore, type EdgeWidthPreset } from '@/stores/graphStore'
 import { useThemeStore } from '@/stores/themeStore'
-import { Maximize2, Minimize2 } from 'lucide-react'
+import { GraphFloatingControls } from './GraphFloatingControls'
 import type { AnalysisResult } from '@/types/api'
 
 // Register cola layout
@@ -26,6 +26,8 @@ function nodeColorForId(id: string): string {
   return NODE_COLOR_PALETTE[idx]
 }
 
+const EDGE_WIDTH_MAP: Record<EdgeWidthPreset, number> = { thin: 1, normal: 2, thick: 3 }
+
 interface GraphVisualizationProps {
   analysis: AnalysisResult
 }
@@ -37,25 +39,87 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
     selectedNode,
     setSelectedNode,
     layoutName,
-    showExternalNodes,
+    showStdlibNodes,
+    showExternalPackages,
     searchQuery,
     isFullScreen,
-    toggleFullScreen,
+    showNodeLabels,
+    nodeSizeMode,
+    edgeWidth,
+    nodeShape,
+    layoutAnimation,
+    fitRequest,
   } = useGraphStore()
   const isDark = useThemeStore((s) => s.isDark)
+
+  const baseEdgeWidth = EDGE_WIDTH_MAP[edgeWidth]
+
+  const styleArray = useMemo(() => [
+    {
+      selector: 'node',
+      style: {
+        'background-color': (ele: NodeSingular) => {
+          const kind = ele.data('external_kind') as string | undefined
+          if (kind === 'stdlib') return isDark ? '#64748b' : '#94a3b8'
+          if (kind === 'package') return isDark ? '#d97706' : '#f59e0b'
+          return nodeColorForId(ele.data('id'))
+        },
+        'label': showNodeLabels ? 'data(label)' : '',
+        'shape': nodeShape,
+        'width': nodeSizeMode === 'fixed' ? 40 : (ele: NodeSingular) => {
+          const degree = ele.degree()
+          return Math.max(30, Math.min(60, 30 + degree * 2))
+        },
+        'height': nodeSizeMode === 'fixed' ? 40 : (ele: NodeSingular) => {
+          const degree = ele.degree()
+          return Math.max(30, Math.min(60, 30 + degree * 2))
+        },
+        'font-size': '12px',
+        'color': isDark ? '#f1f5f9' : '#1e293b',
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'text-wrap': 'wrap' as const,
+        'text-max-width': '100px',
+        'border-width': 2,
+        'border-color': (ele: NodeSingular) => {
+          const kind = ele.data('external_kind') as string | undefined
+          if (kind === 'stdlib') return isDark ? '#64748b' : '#94a3b8'
+          if (kind === 'package') return isDark ? '#d97706' : '#f59e0b'
+          return nodeColorForId(ele.data('id'))
+        },
+      },
+    },
+    { selector: 'node:selected', style: { 'border-width': 4, 'border-color': '#a78bfa', 'background-color': '#a78bfa' } },
+    {
+      selector: 'edge',
+      style: {
+        'width': baseEdgeWidth,
+        'line-color': isDark ? '#64748b' : '#cbd5e1',
+        'target-arrow-color': isDark ? '#64748b' : '#cbd5e1',
+        'target-arrow-shape': 'triangle',
+        'curve-style': 'bezier',
+        'opacity': 0.7,
+      },
+    },
+    { selector: 'edge:selected', style: { 'line-color': '#8b5cf6', 'target-arrow-color': '#8b5cf6', 'width': baseEdgeWidth + 1, 'opacity': 1 } },
+    { selector: '.highlighted', style: { 'background-color': isDark ? '#f59e0b' : '#fbbf24', 'border-color': '#f59e0b', 'border-width': 3 } },
+    { selector: '.connected-out', style: { 'line-color': '#3b82f6', 'target-arrow-color': '#3b82f6', 'width': baseEdgeWidth + 1, 'opacity': 1 } },
+    { selector: '.connected-in', style: { 'line-color': '#10b981', 'target-arrow-color': '#10b981', 'width': baseEdgeWidth + 1, 'opacity': 1 } },
+    { selector: '.connected', style: { 'line-color': '#8b5cf6', 'target-arrow-color': '#8b5cf6', 'width': baseEdgeWidth + 1, 'opacity': 1 } },
+    { selector: '.dimmed', style: { 'opacity': 0.2 } },
+  ], [showNodeLabels, nodeSizeMode, edgeWidth, nodeShape, isDark, baseEdgeWidth])
 
   useEffect(() => {
     if (!containerRef.current) return
 
-    // Filter nodes based on showExternalNodes
-    const nodes = showExternalNodes 
-      ? analysis.nodes 
-      : analysis.nodes.filter(n => n.node_type !== 'external')
-    
+    const nodes = analysis.nodes.filter((n) => {
+      if (n.node_type !== 'external') return true
+      const kind = n.external_kind ?? 'package'
+      return (kind === 'stdlib' && showStdlibNodes) || (kind === 'package' && showExternalPackages)
+    })
     const nodeIds = new Set(nodes.map(n => n.id))
     const edges = analysis.edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target))
 
-    // Initialize Cytoscape
     const cy = cytoscape({
       container: containerRef.current,
       elements: {
@@ -65,124 +129,22 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
             label: node.label,
             node_type: node.node_type,
             file_path: node.file_path,
+            external_kind: node.external_kind ?? undefined,
           },
         })),
-        // Arrow direction: dependency → consumer (e.g. utils → me when I import utils). API gives (importer, imported), we swap for display.
         edges: edges.map(edge => ({
-          data: {
-            id: `${edge.source}-${edge.target}`,
-            source: edge.target,
-            target: edge.source,
-          },
+          data: { id: `${edge.source}-${edge.target}`, source: edge.target, target: edge.source },
         })),
       },
-      style: [
-        {
-          selector: 'node',
-          style: {
-            'background-color': (ele: NodeSingular) => nodeColorForId(ele.data('id')),
-            'label': 'data(label)',
-            'width': (ele: NodeSingular) => {
-              const degree = ele.degree()
-              return Math.max(30, Math.min(60, 30 + degree * 2))
-            },
-            'height': (ele: NodeSingular) => {
-              const degree = ele.degree()
-              return Math.max(30, Math.min(60, 30 + degree * 2))
-            },
-            'font-size': '12px',
-            'color': isDark ? '#f1f5f9' : '#1e293b',
-            'text-valign': 'center',
-            'text-halign': 'center',
-            'text-wrap': 'wrap',
-            'text-max-width': '100px',
-            'border-width': 2,
-            'border-color': (ele: NodeSingular) => {
-              const c = nodeColorForId(ele.data('id'))
-              return c
-            },
-          },
-        },
-        {
-          selector: 'node:selected',
-          style: {
-            'border-width': 4,
-            'border-color': '#a78bfa',
-            'background-color': '#a78bfa',
-          },
-        },
-        {
-          selector: 'edge',
-          style: {
-            'width': 2,
-            'line-color': isDark ? '#64748b' : '#cbd5e1',
-            'target-arrow-color': isDark ? '#64748b' : '#cbd5e1',
-            'target-arrow-shape': 'triangle',
-            'curve-style': 'bezier',
-            'opacity': 0.7,
-          },
-        },
-        {
-          selector: 'edge:selected',
-          style: {
-            'line-color': '#8b5cf6',
-            'target-arrow-color': '#8b5cf6',
-            'width': 3,
-            'opacity': 1,
-          },
-        },
-        {
-          selector: '.highlighted',
-          style: {
-            'background-color': isDark ? '#f59e0b' : '#fbbf24',
-            'border-color': '#f59e0b',
-            'border-width': 3,
-          },
-        },
-        {
-          // Connected edges - outgoing (imports)
-          selector: '.connected-out',
-          style: {
-            'line-color': '#3b82f6',  // Blue - represents "imports" (outgoing)
-            'target-arrow-color': '#3b82f6',
-            'width': 3,
-            'opacity': 1,
-          },
-        },
-        {
-          // Connected edges - incoming (imported by)
-          selector: '.connected-in',
-          style: {
-            'line-color': '#10b981',  // Green - represents "imported by" (incoming)
-            'target-arrow-color': '#10b981',
-            'width': 3,
-            'opacity': 1,
-          },
-        },
-        {
-          // Fallback for generic connected (backwards compatibility)
-          selector: '.connected',
-          style: {
-            'line-color': '#8b5cf6',
-            'target-arrow-color': '#8b5cf6',
-            'width': 3,
-            'opacity': 1,
-          },
-        },
-        {
-          selector: '.dimmed',
-          style: {
-            'opacity': 0.2,
-          },
-        },
-      ],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cytoscape stylesheet accepts mapper functions
+      style: styleArray as any,
       layout: {
         name: layoutName,
         // @ts-expect-error - cola layout options
         infinite: false,
         fit: true,
         padding: 50,
-        animate: true,
+        animate: layoutAnimation,
         animationDuration: 500,
       },
       minZoom: 0.1,
@@ -231,7 +193,14 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
     return () => {
       cy.destroy()
     }
-  }, [analysis, layoutName, showExternalNodes, setSelectedNode, isDark])
+  }, [analysis, layoutName, showStdlibNodes, showExternalPackages, setSelectedNode])
+
+  // Update style when display options change (no graph recreation)
+  useEffect(() => {
+    if (!cyRef.current) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cytoscape stylesheet accepts mapper functions
+    cyRef.current.style(styleArray as any)
+  }, [styleArray])
 
   // Handle search
   useEffect(() => {
@@ -261,7 +230,6 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
   // Handle layout change
   useEffect(() => {
     if (!cyRef.current) return
-
     const cy = cyRef.current
     cy.layout({
       name: layoutName,
@@ -269,10 +237,16 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
       infinite: false,
       fit: true,
       padding: 50,
-      animate: true,
+      animate: layoutAnimation,
       animationDuration: 500,
     }).run()
-  }, [layoutName])
+  }, [layoutName, layoutAnimation])
+
+  // Fit to screen when user clicks "Fit to screen"
+  useEffect(() => {
+    if (!cyRef.current || fitRequest === 0) return
+    cyRef.current.fit(undefined, 50)
+  }, [fitRequest])
 
   // Handle external selectedNode change (e.g. from ExternalPackagesModal)
   useEffect(() => {
@@ -332,47 +306,26 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
   }, [isFullScreen])
 
   return (
-    <div className="relative w-full h-full">
+    <div className={`relative w-full h-full dot-pattern-light dark:dot-pattern`}>
       <div
         ref={containerRef}
-        className="w-full h-full blueprint-grid-light dark:blueprint-grid rounded-xl"
+        className="w-full h-full rounded-xl"
         role="img"
         aria-label="Dependency graph visualization"
       />
-      
-      {/* Full Screen Toggle Button */}
-      <button
-        type="button"
-        onClick={toggleFullScreen}
-        className="absolute top-4 right-4 p-2.5 rounded-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 shadow-lg hover:shadow-xl transition-all duration-200 group z-10"
-        aria-label={isFullScreen ? 'Exit full screen' : 'Enter full screen'}
-        title={isFullScreen ? 'Exit full screen (ESC)' : 'Enter full screen'}
-      >
-        {isFullScreen ? (
-          <Minimize2 className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" aria-hidden />
-        ) : (
-          <Maximize2 className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" aria-hidden />
-        )}
-      </button>
+      <GraphFloatingControls />
 
-      {/* Edge Direction Legend */}
       {selectedNode && (
-        <div className="absolute bottom-4 left-4 p-3 rounded-lg bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm border border-slate-200 dark:border-slate-700 shadow-lg z-10">
-          <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-            Edge Colors
-          </div>
+        <div className="absolute bottom-4 left-4 p-3 rounded-xl bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border border-gray-200 dark:border-white/10 shadow-lg z-10">
+          <div className="text-xs font-semibold text-gray-600 dark:text-slate-400 mb-2">Edge Colors</div>
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-0.5 bg-blue-500" />
-              <span className="text-xs text-slate-600 dark:text-slate-400">
-                Imports (outgoing)
-              </span>
+              <div className="w-8 h-0.5 bg-blue-500 rounded" />
+              <span className="text-xs text-gray-500 dark:text-slate-500 font-mono-ui">Imports (outgoing)</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-0.5 bg-emerald-500" />
-              <span className="text-xs text-slate-600 dark:text-slate-400">
-                Imported by (incoming)
-              </span>
+              <div className="w-8 h-0.5 bg-emerald-500 rounded" />
+              <span className="text-xs text-gray-500 dark:text-slate-500 font-mono-ui">Imported by (incoming)</span>
             </div>
           </div>
         </div>

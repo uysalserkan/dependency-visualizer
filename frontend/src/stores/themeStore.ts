@@ -24,10 +24,8 @@ export const useThemeStore = create<ThemeState>()(
     {
       name: 'theme-storage',
       onRehydrateStorage: () => (state) => {
-        // Apply theme on page load
-        if (state?.isDark) {
-          document.documentElement.classList.add('dark')
-        }
+        // Sync document class with stored theme (add or remove dark)
+        document.documentElement.classList.toggle('dark', state?.isDark === true)
       },
     }
   )

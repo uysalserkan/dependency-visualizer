@@ -10,6 +10,8 @@ export interface Node {
   label: string
   file_path: string
   node_type: 'module' | 'package' | 'external'
+  /** For external nodes: 'stdlib' (built-in) or 'package' (third-party). Undefined for internal or legacy. */
+  external_kind?: 'stdlib' | 'package'
   import_count: number
   imported_by_count: number
   pagerank: number

@@ -5,6 +5,38 @@ from pathlib import Path
 
 from app.core.parser.factory import ParserRegistry
 
+# Default patterns always excluded from discovery (never scan these).
+# Merged with request ignore_patterns so .venv / node_modules are never read.
+DEFAULT_IGNORE_PATTERNS = [
+    ".venv",
+    "venv",
+    "env",
+    ".env",
+    "__pycache__",
+    ".git",
+    "node_modules",
+    "*.pyc",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".mypy_cache",
+    ".tox",
+    ".nox",
+    ".idea",
+    ".vscode",
+    "dist",
+    "build",
+    "*.egg-info",
+    ".eggs",
+    ".next",
+    ".nuxt",
+    "target",
+    "vendor",
+    ".cache",
+    "htmlcov",
+    ".coverage",
+    ".hypothesis",
+]
+
 
 class FileDiscovery:
     """Discover source files in a project directory."""
@@ -13,21 +45,19 @@ class FileDiscovery:
         """Initialize file discovery.
 
         Args:
-            ignore_patterns: List of glob patterns to ignore
+            ignore_patterns: Additional glob patterns to ignore. Always merged with
+                DEFAULT_IGNORE_PATTERNS so .venv, node_modules, etc. are never scanned.
         """
-        self.ignore_patterns = ignore_patterns or [
-            ".venv",
-            "venv",
-            "__pycache__",
-            ".git",
-            "node_modules",
-            "*.pyc",
-            ".pytest_cache",
-            ".ruff_cache",
-        ]
+        base = list(DEFAULT_IGNORE_PATTERNS)
+        extra = ignore_patterns or []
+        self.ignore_patterns = list(dict.fromkeys(base + extra))
 
     def _should_ignore(self, path: Path) -> bool:
         """Check if a path should be ignored.
+
+        Uses resolved path so symlinks (e.g. .venv) are correctly matched.
+        Any path segment matching an ignore pattern (or any parent directory name)
+        causes the path to be ignored.
 
         Args:
             path: Path to check
@@ -35,14 +65,15 @@ class FileDiscovery:
         Returns:
             True if path should be ignored
         """
-        path_str = str(path)
+        try:
+            resolved = path.resolve()
+        except OSError:
+            resolved = path
 
         for pattern in self.ignore_patterns:
-            # Check if any part of the path matches the pattern
-            if fnmatch.fnmatch(path.name, pattern):
+            if fnmatch.fnmatch(resolved.name, pattern):
                 return True
-            # Check if pattern matches any parent directory
-            for parent in path.parents:
+            for parent in resolved.parents:
                 if fnmatch.fnmatch(parent.name, pattern):
                     return True
 

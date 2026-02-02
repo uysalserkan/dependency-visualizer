@@ -6,6 +6,7 @@ from app.core.parser.base import LanguageParser
 from app.core.parser.python import PythonParser
 from app.core.parser.javascript import JavaScriptParser, TypeScriptParser
 from app.core.parser.go import GoParser
+from app.core.parser.java import JavaParser
 
 
 class ParserRegistry:
@@ -38,6 +39,11 @@ class ParserRegistry:
                 go_parser = GoParser()
                 for ext in go_parser.get_supported_extensions():
                     cls._parsers[ext] = go_parser
+
+                # Register Java parser
+                java_parser = JavaParser()
+                for ext in java_parser.get_supported_extensions():
+                    cls._parsers[ext] = java_parser
 
                 cls._initialized = True
             except Exception as e:
@@ -101,4 +107,6 @@ class ParserRegistry:
                 languages.add("TypeScript")
             elif "Go" in parser_name:
                 languages.add("Go")
+            elif "Java" in parser_name:
+                languages.add("Java")
         return sorted(list(languages))

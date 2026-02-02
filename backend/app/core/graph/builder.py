@@ -52,7 +52,10 @@ class GraphBuilder:
         """
         graph = nx.DiGraph()
         for n in analysis.nodes:
-            graph.add_node(n.id, file_path=n.file_path, node_type=n.node_type)
+            attrs = {"file_path": n.file_path, "node_type": n.node_type}
+            if getattr(n, "external_kind", None) is not None:
+                attrs["external_kind"] = n.external_kind
+            graph.add_node(n.id, **attrs)
         for e in analysis.edges:
             # GraphML/GEXF only support scalar types; store line_numbers as comma-separated string
             line_numbers_str = ",".join(map(str, e.line_numbers)) if e.line_numbers else ""
@@ -107,9 +110,13 @@ class GraphBuilder:
             node_type = "module" if target_path else "external"
 
             if not self.graph.has_node(target):
-                self.graph.add_node(
-                    target, node_type=node_type, file_path=target_path or raw_target
-                )
+                attrs: dict = {"node_type": node_type, "file_path": target_path or raw_target}
+                if node_type == "external":
+                    resolver = get_resolver(source, self.project_root)
+                    attrs["external_kind"] = (
+                        "stdlib" if resolver.is_stdlib(source, raw_target) else "package"
+                    )
+                self.graph.add_node(target, **attrs)
 
             # Add or update edge (source -> canonical target)
             if self.graph.has_edge(source, target):
@@ -194,12 +201,15 @@ class GraphBuilder:
             else:
                 label = Path(node_id).name
 
+            external_kind = node_data.get("external_kind")  # "stdlib" | "package" | None (legacy)
+
             nodes.append(
                 Node(
                     id=node_id,
                     label=label,
                     file_path=node_data["file_path"],
                     node_type=node_data["node_type"],
+                    external_kind=external_kind,
                     import_count=import_count,
                     imported_by_count=imported_by_count,
                     pagerank=pagerank.get(node_id, 0.0),

@@ -13,8 +13,13 @@ class AnalyzeRequest(BaseModel):
         default=False, description="Include external/installed packages"
     )
     ignore_patterns: list[str] = Field(
-        default_factory=lambda: [".venv", "venv", "__pycache__", ".git", "node_modules"],
-        description="Patterns to ignore during file discovery",
+        default_factory=lambda: [
+            ".venv", "venv", ".env", ".*", "env", "__pycache__", ".git", "node_modules",
+            ".pytest_cache", ".ruff_cache", ".mypy_cache", ".tox", ".nox",
+            ".idea", ".vscode", "dist", "build", "*.egg-info", ".eggs",
+            ".next", ".nuxt", "target", "vendor", ".cache", "htmlcov", ".coverage",
+        ],
+        description="Additional patterns to ignore during file discovery (.venv, node_modules, etc. are always ignored)",
     )
     extractor_backend: Literal["python", "go"] | None = Field(
         default=None,
@@ -38,8 +43,13 @@ class AnalyzeRepositoryRequest(BaseModel):
         description="Branch, tag, or commit to analyze (default branch if omitted)",
     )
     ignore_patterns: list[str] = Field(
-        default_factory=lambda: [".venv", "venv", "__pycache__", ".git", "node_modules"],
-        description="Patterns to ignore during file discovery",
+        default_factory=lambda: [
+            ".venv", "venv", "__pycache__", ".git", "node_modules",
+            ".pytest_cache", ".ruff_cache", ".mypy_cache", ".tox", ".nox",
+            ".idea", ".vscode", "dist", "build", "*.egg-info", ".eggs",
+            ".next", ".nuxt", "target", "vendor", ".cache", "htmlcov", ".coverage",
+        ],
+        description="Additional patterns to ignore during file discovery (.venv, node_modules, etc. are always ignored)",
     )
     extractor_backend: Literal["python", "go"] | None = Field(
         default=None,
@@ -71,6 +81,10 @@ class Node(BaseModel):
     file_path: str = Field(..., description="Full path to the file")
     node_type: Literal["module", "package", "external"] = Field(
         ..., description="Type of node"
+    )
+    external_kind: Literal["stdlib", "package"] | None = Field(
+        default=None,
+        description="For external nodes: 'stdlib' (built-in) or 'package' (third-party). None for internal.",
     )
     import_count: int = Field(default=0, description="Number of imports from this module")
     imported_by_count: int = Field(default=0, description="Number of modules importing this")

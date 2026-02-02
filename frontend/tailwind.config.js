@@ -7,6 +7,9 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        'mono-ui': ['ui-monospace', 'SF Mono', 'Monaco', 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', 'monospace'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

@@ -90,13 +90,18 @@
 
   /* Dot pattern background for graph area */
   .dot-pattern {
-    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-    background-size: 20px 20px;
+    background-color: rgb(2 6 23);
+    background-image: radial-gradient(circle at center, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+    background-size: 16px 16px;
   }
-  
   .dot-pattern-light {
-    background-image: radial-gradient(circle, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
-    background-size: 20px 20px;
+    background-color: rgb(248 250 252);
+    background-image: radial-gradient(circle at center, rgba(100, 116, 139, 0.15) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+
+  .font-mono-ui {
+    font-family: ui-monospace, 'SF Mono', 'Monaco', 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', monospace;
   }
 
   /* Animated Blueprint Grid */

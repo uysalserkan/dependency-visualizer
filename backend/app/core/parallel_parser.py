@@ -91,10 +91,10 @@ class ParallelParser:
                 "Extractor backend=go but Go extractor not found (GO_EXTRACTOR_PATH missing or not executable); using Python parsers"
             )
         
-        # Separate Go files from other files
-        # Go extractor doesn't support .go files, so we need to parse them with Python parser
-        go_files = [f for f in files if f.suffix == ".go"]
-        non_go_files = [f for f in files if f.suffix != ".go"]
+        # Separate Go and Java files from other files
+        # Go extractor doesn't support .go or .java files, so we need to parse them with Python parser
+        go_and_java_files = [f for f in files if f.suffix in (".go", ".java")]
+        non_go_files = [f for f in files if f.suffix not in (".go", ".java")]
         
         all_imports = []
         warnings = list(go_fallback_warnings)
@@ -111,15 +111,15 @@ class ParallelParser:
                 go_files.extend(non_go_files)
         else:
             # No extractor, parse all non-go files with Python
-            go_files.extend(non_go_files)
+            go_and_java_files.extend(non_go_files)
         
-        # Parse Go files (and any fallback files) with Python parsers
-        if not go_files:
+        # Parse Go and Java files (and any fallback files) with Python parsers
+        if not go_and_java_files:
             return all_imports, warnings
 
         # For small projects, use sequential parsing (overhead not worth it)
-        if len(go_files) < 10:
-            for file_path in go_files:
+        if len(go_and_java_files) < 10:
+            for file_path in go_and_java_files:
                 _, imports, error = _parse_file_worker(file_path)
                 if error:
                     warnings.append(f"Error parsing {file_path.relative_to(project_path)}: {error}")
@@ -131,7 +131,7 @@ class ParallelParser:
         # Use parallel processing for larger projects
         try:
             with mp.Pool(processes=self.max_workers) as pool:
-                results = pool.map(_parse_file_worker, go_files)
+                results = pool.map(_parse_file_worker, go_and_java_files)
 
             for file_path, imports, error in results:
                 if error:
@@ -143,7 +143,7 @@ class ParallelParser:
         except Exception as e:
             # Fallback to sequential if parallel fails
             warnings.append(f"Parallel parsing failed, using sequential: {str(e)}")
-            for file_path in go_files:
+            for file_path in go_and_java_files:
                 _, imports, error = _parse_file_worker(file_path)
                 if error:
                     warnings.append(f"Error parsing {file_path.relative_to(project_path)}: {error}")

@@ -31,6 +31,7 @@ class NodeType:
     module_path: str
     file_path: Optional[str] = None
     language: str
+    external_kind: Optional[str] = None  # "stdlib" | "package" for external nodes
     imports_count: int
     imported_by_count: int
     pagerank: Optional[float] = None
@@ -307,6 +308,7 @@ def convert_node_to_graphql(node: Node) -> NodeType:
         module_path=node.file_path or node.id,
         file_path=node.file_path,
         language="",  # Not on API Node; infer from file path if needed
+        external_kind=getattr(node, "external_kind", None),
         imports_count=node.import_count,
         imported_by_count=node.imported_by_count,
         pagerank=node.pagerank,

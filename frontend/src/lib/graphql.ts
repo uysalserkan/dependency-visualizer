@@ -26,6 +26,7 @@ export const GET_ANALYSIS = `
         modulePath
         filePath
         language
+        externalKind
         importsCount
         importedByCount
         pagerank

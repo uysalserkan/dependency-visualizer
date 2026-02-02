@@ -73,10 +73,13 @@ def _parse_json(content: bytes) -> tuple[nx.DiGraph, str]:
 
     def node_attrs(n: dict) -> dict:
         d = n.get("data", n)
-        return {
+        attrs = {
             "node_type": d.get("node_type", "module"),
             "file_path": d.get("file_path", node_id(n)),
         }
+        if "external_kind" in d and d["external_kind"] in ("stdlib", "package"):
+            attrs["external_kind"] = d["external_kind"]
+        return attrs
 
     def edge_src(e: dict) -> str:
         d = e.get("data", e)
@@ -118,11 +121,13 @@ def _graph_from_analysis_result(data: dict) -> tuple[nx.DiGraph, str]:
         nid = n.get("id", "")
         if not nid:
             continue
-        g.add_node(
-            nid,
-            node_type=n.get("node_type", "module"),
-            file_path=n.get("file_path", nid),
-        )
+        node_attrs = {
+            "node_type": n.get("node_type", "module"),
+            "file_path": n.get("file_path", nid),
+        }
+        if n.get("external_kind") in ("stdlib", "package"):
+            node_attrs["external_kind"] = n["external_kind"]
+        g.add_node(nid, **node_attrs)
     for e in edges_data:
         u, v = e.get("source"), e.get("target")
         if u and v:

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { X, Search, Package, TrendingUp, ArrowUpRight } from 'lucide-react'
+import { X, Search, Package, TrendingUp, ArrowUpRight, Box } from 'lucide-react'
 import type { Node, AnalysisResult } from '@/types/api'
 
 interface ExternalPackagesModalProps {
@@ -14,52 +14,38 @@ export function ExternalPackagesModal({ analysis, onClose, onSelectNode }: Exter
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<SortBy>('usage')
 
-  // Extract external packages with usage count
-  const externalPackages = useMemo(() => {
+  // Extract external nodes: split into built-in (stdlib) and third-party (package)
+  const { builtIn, externalPackages } = useMemo(() => {
     const externals = analysis.nodes.filter(n => n.node_type === 'external')
-    
-    // Count how many internal nodes import each external package
     const usageCounts = new Map<string, number>()
     analysis.edges.forEach(edge => {
       const sourceNode = analysis.nodes.find(n => n.id === edge.source)
       const targetNode = analysis.nodes.find(n => n.id === edge.target)
-      
       if (sourceNode?.node_type !== 'external' && targetNode?.node_type === 'external') {
         usageCounts.set(edge.target, (usageCounts.get(edge.target) ?? 0) + 1)
       }
     })
-
-    return externals.map(pkg => ({
-      ...pkg,
-      usageCount: usageCounts.get(pkg.id) ?? 0,
-    }))
+    const withUsage = externals.map(pkg => ({ ...pkg, usageCount: usageCounts.get(pkg.id) ?? 0 }))
+    const builtIn = withUsage.filter(p => p.external_kind === 'stdlib')
+    const packages = withUsage.filter(p => p.external_kind !== 'stdlib') // 'package' or legacy
+    return { builtIn, externalPackages: packages }
   }, [analysis])
 
-  // Filter and sort
-  const filteredPackages = useMemo(() => {
-    let results = externalPackages
-
-    // Search filter
+  const filterAndSort = (list: (Node & { usageCount: number })[]) => {
+    let results = list
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      results = results.filter(pkg => 
-        pkg.label.toLowerCase().includes(query) || 
-        pkg.file_path.toLowerCase().includes(query)
-      )
+      const q = searchQuery.toLowerCase()
+      results = results.filter(p => p.label.toLowerCase().includes(q) || p.file_path.toLowerCase().includes(q))
     }
-
-    // Sort
-    if (sortBy === 'usage') {
-      results.sort((a, b) => b.usageCount - a.usageCount)
-    } else {
-      results.sort((a, b) => a.label.localeCompare(b.label))
-    }
-
+    if (sortBy === 'usage') results.sort((a, b) => b.usageCount - a.usageCount)
+    else results.sort((a, b) => a.label.localeCompare(b.label))
     return results
-  }, [externalPackages, searchQuery, sortBy])
+  }
 
-  const totalUsage = externalPackages.reduce((sum, pkg) => sum + pkg.usageCount, 0)
-  const avgUsage = externalPackages.length > 0 ? (totalUsage / externalPackages.length).toFixed(1) : '0'
+  const filteredBuiltIn = useMemo(() => filterAndSort(builtIn), [builtIn, searchQuery, sortBy])
+  const filteredPackages = useMemo(() => filterAndSort(externalPackages), [externalPackages, searchQuery, sortBy])
+
+  const totalUsage = builtIn.reduce((s, p) => s + p.usageCount, 0) + externalPackages.reduce((s, p) => s + p.usageCount, 0)
 
   const handlePackageClick = (pkg: Node & { usageCount: number }) => {
     onSelectNode(pkg.id)
@@ -86,10 +72,10 @@ export function ExternalPackagesModal({ analysis, onClose, onSelectNode }: Exter
             </div>
             <div>
               <h2 id="external-packages-title" className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                External Packages
+                Built-in &amp; External
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                {externalPackages.length} package{externalPackages.length !== 1 ? 's' : ''} • {totalUsage} total usage{totalUsage !== 1 ? 's' : ''}
+                {builtIn.length} built-in • {externalPackages.length} package{externalPackages.length !== 1 ? 's' : ''} • {totalUsage} usage{totalUsage !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
@@ -105,17 +91,17 @@ export function ExternalPackagesModal({ analysis, onClose, onSelectNode }: Exter
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 p-6 border-b border-slate-200 dark:border-slate-700 shrink-0">
+          <div className="text-center p-3 rounded-lg bg-slate-500/10 border border-slate-500/20">
+            <div className="text-2xl font-bold text-slate-600 dark:text-slate-400">{builtIn.length}</div>
+            <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Built-in</div>
+          </div>
           <div className="text-center p-3 rounded-lg bg-sky-500/10 border border-sky-500/20">
             <div className="text-2xl font-bold text-sky-600 dark:text-sky-400">{externalPackages.length}</div>
-            <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Total Packages</div>
+            <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Packages</div>
           </div>
           <div className="text-center p-3 rounded-lg bg-violet-500/10 border border-violet-500/20">
             <div className="text-2xl font-bold text-violet-600 dark:text-violet-400">{totalUsage}</div>
             <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Total Imports</div>
-          </div>
-          <div className="text-center p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
-            <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{avgUsage}</div>
-            <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Avg per Package</div>
           </div>
         </div>
 
@@ -166,52 +152,88 @@ export function ExternalPackagesModal({ analysis, onClose, onSelectNode }: Exter
           </div>
         </div>
 
-        {/* Package List */}
-        <div className="flex-1 overflow-y-auto p-4 min-h-0">
-          {filteredPackages.length === 0 ? (
-            <div className="text-center py-12">
-              <Package className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" aria-hidden />
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                {searchQuery ? 'No packages found matching your search' : 'No external packages'}
+        {/* Lists: Built-in then External packages */}
+        <div className="flex-1 overflow-y-auto p-4 min-h-0 space-y-6">
+          {/* Built-in (stdlib) */}
+          <section aria-labelledby="builtin-heading">
+            <h3 id="builtin-heading" className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+              <Box className="w-4 h-4 text-slate-500" aria-hidden />
+              Built-in ({filteredBuiltIn.length})
+            </h3>
+            {filteredBuiltIn.length === 0 ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400 py-2">
+                {searchQuery ? 'No built-in modules match' : 'No built-in modules in this project'}
               </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredPackages.map((pkg) => (
-                <button
-                  key={pkg.id}
-                  type="button"
-                  onClick={() => handlePackageClick(pkg)}
-                  className="w-full flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 hover:border-sky-300 dark:hover:border-sky-600 transition-all group"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-9 h-9 rounded-lg bg-sky-500/15 flex items-center justify-center shrink-0 group-hover:bg-sky-500/25 transition-colors">
-                      <Package className="w-4 h-4 text-sky-500" aria-hidden />
-                    </div>
-                    <div className="min-w-0 flex-1 text-left">
-                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
-                        {pkg.label}
+            ) : (
+              <div className="space-y-2">
+                {filteredBuiltIn.map((pkg) => (
+                  <button
+                    key={pkg.id}
+                    type="button"
+                    onClick={() => handlePackageClick(pkg)}
+                    className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-750 hover:border-slate-300 dark:hover:border-slate-600 transition-all group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-8 h-8 rounded-lg bg-slate-500/15 flex items-center justify-center shrink-0 group-hover:bg-slate-500/25">
+                        <Box className="w-4 h-4 text-slate-500" aria-hidden />
                       </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 truncate font-mono">
-                        {pkg.file_path}
+                      <div className="min-w-0 flex-1 text-left">
+                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{pkg.label}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate font-mono">{pkg.file_path}</div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0 ml-3">
-                    <div className="text-right">
-                      <div className="text-sm font-bold text-violet-600 dark:text-violet-400">
-                        {pkg.usageCount}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-sm font-bold text-violet-600 dark:text-violet-400">{pkg.usageCount}</span>
+                      <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600" aria-hidden />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* External packages */}
+          <section aria-labelledby="packages-heading">
+            <h3 id="packages-heading" className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+              <Package className="w-4 h-4 text-sky-500" aria-hidden />
+              External packages ({filteredPackages.length})
+            </h3>
+            {filteredPackages.length === 0 ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400 py-2">
+                {searchQuery ? 'No packages match' : 'No third-party packages'}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {filteredPackages.map((pkg) => (
+                  <button
+                    key={pkg.id}
+                    type="button"
+                    onClick={() => handlePackageClick(pkg)}
+                    className="w-full flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 hover:border-sky-300 dark:hover:border-sky-600 transition-all group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-9 h-9 rounded-lg bg-sky-500/15 flex items-center justify-center shrink-0 group-hover:bg-sky-500/25">
+                        <Package className="w-4 h-4 text-sky-500" aria-hidden />
                       </div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        import{pkg.usageCount !== 1 ? 's' : ''}
+                      <div className="min-w-0 flex-1 text-left">
+                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{pkg.label}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate font-mono">{pkg.file_path}</div>
                       </div>
                     </div>
-                    <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-sky-500 transition-colors" aria-hidden />
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
+                    <div className="flex items-center gap-3 shrink-0 ml-3">
+                      <div className="text-right">
+                        <div className="text-sm font-bold text-violet-600 dark:text-violet-400">{pkg.usageCount}</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                          import{pkg.usageCount !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                      <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-sky-500 transition-colors" aria-hidden />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       </div>
     </div>

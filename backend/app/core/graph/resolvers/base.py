@@ -51,3 +51,17 @@ class ImportResolver(ABC):
             return True
         except ValueError:
             return False
+
+    def is_stdlib(self, source_file: str, import_module: str) -> bool:
+        """Whether the import is a language built-in / standard library (not third-party).
+
+        Only meaningful when resolve_import returned None (external). Default: False.
+
+        Args:
+            source_file: File containing the import
+            import_module: Raw imported module/path
+
+        Returns:
+            True if built-in/stdlib, False if third-party or unknown
+        """
+        return False

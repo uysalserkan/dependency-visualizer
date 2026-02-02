@@ -8,6 +8,27 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
+# Node.js built-in modules (can be required without node_modules).
+# Used to classify external imports as "stdlib" vs "package".
+# See https://nodejs.org/api/modules.html
+NODE_BUILTIN_MODULES = frozenset({
+    "assert", "async_context", "async_hooks", "buffer", "child_process", "cluster",
+    "console", "crypto", "dgram", "diagnostics_channel", "dns", "domain", "events",
+    "fs", "globals", "http", "http2", "https", "inspector", "intl", "module",
+    "net", "os", "path", "perf_hooks", "permissions", "process", "querystring",
+    "readline", "repl", "report", "sqlite", "stream", "string_decoder", "test",
+    "timers", "tls", "tracing", "tty", "url", "util", "v8", "vm", "wasi",
+    "webcrypto", "webstreams", "worker_threads", "zlib",
+    # With node: prefix (Node 14+)
+    "node:assert", "node:async_hooks", "node:buffer", "node:child_process", "node:cluster",
+    "node:console", "node:crypto", "node:dgram", "node:diagnostics_channel", "node:dns",
+    "node:events", "node:fs", "node:http", "node:http2", "node:https", "node:inspector",
+    "node:module", "node:net", "node:os", "node:path", "node:perf_hooks", "node:process",
+    "node:querystring", "node:readline", "node:repl", "node:stream", "node:string_decoder",
+    "node:timers", "node:tls", "node:tty", "node:url", "node:util", "node:v8", "node:vm",
+    "node:worker_threads", "node:zlib",
+})
+
 
 class JavaScriptImportResolver(ImportResolver):
     """Resolve JavaScript/TypeScript imports (ES6, CommonJS, relative, absolute)."""
@@ -63,6 +84,14 @@ class JavaScriptImportResolver(ImportResolver):
             return self._resolve_from_root(import_module)
 
         return None
+
+    def is_stdlib(self, source_file: str, import_module: str) -> bool:
+        """True if the import is a Node.js built-in module (not node_modules package)."""
+        name = import_module.strip()
+        if name.startswith("node:"):
+            return name in NODE_BUILTIN_MODULES or name[5:] in NODE_BUILTIN_MODULES
+        top = name.split("/")[0].split("@")[-1]  # scoped: @scope/pkg -> pkg
+        return top in NODE_BUILTIN_MODULES
 
     def _resolve_relative_import(self, source_file: str, import_module: str) -> str | None:
         """Resolve relative import (./, ../).

@@ -43,11 +43,11 @@ export function InsightsPanel() {
   }
 
   return (
-    <div className="glass dark:glass rounded-2xl border dark:border-white/10 p-8 space-y-6 glass-hover">
+    <div className="rounded-xl border border-gray-200 dark:border-white/5 backdrop-blur-md bg-white/80 dark:bg-slate-900/50 p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Project Health</h2>
-        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500/20 to-violet-500/20 flex items-center justify-center">
-          <Award className="w-5 h-5 text-indigo-500" aria-hidden />
+        <h2 className="text-sm font-bold text-gray-900 dark:text-white tracking-tight">Project Health</h2>
+        <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/5 flex items-center justify-center">
+          <Award className="w-4 h-4 text-gray-500 dark:text-slate-400" aria-hidden />
         </div>
       </div>
 
