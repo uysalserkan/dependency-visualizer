@@ -1,6 +1,11 @@
 # Import Visualizer
 
-A modern web application for visualizing Python import dependencies. Understand your project structure through interactive, beautiful graphs.
+A modern web application for visualizing import dependencies in **Python, JavaScript, and TypeScript** projects. Understand your project structure through interactive, beautiful graphs.
+
+**Supported Languages:**
+- **Python** (`.py`) - Full AST parsing with relative/absolute import resolution
+- **JavaScript** (`.js`, `.jsx`, `.mjs`, `.cjs`) - ES6 imports, CommonJS require, dynamic imports
+- **TypeScript** (`.ts`, `.tsx`) - All JS features + type imports, path aliases (`@/`, `~/`)
 
 ![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)
@@ -37,12 +42,13 @@ A modern web application for visualizing Python import dependencies. Understand 
 - 🎯 **Loading Indicators** - Better UX with progress feedback
 
 ### Phase 4 Features (NEW) 🌍
-- 🌐 **JavaScript/TypeScript Support** - ES6, CommonJS, dynamic imports
+- 🌐 **Multi-Language Support** - Python, JavaScript, and TypeScript
+- 🎯 **Smart Import Resolution** - Relative paths, path aliases (`@/`, `~/`), index files
+- 📦 **Repository Analysis** - Analyze projects from Git URLs (GitHub, GitLab, Bitbucket, private servers)
 - 🔌 **Plugin System** - Extensible architecture for custom parsers
 - 🛠️ **CLI Tool** - Command-line interface for CI/CD
 - 📊 **Comparison Mode** - Before/after analysis with diff
 - 🔍 **Language Detection** - Automatic multi-language identification
-- 🔗 **Cross-Language Analysis** - Unified multi-language projects
 
 ## Quick Start
 
@@ -243,6 +249,8 @@ Get automated insights and recommendations.
 
 ## Development
 
+**All test-related scripts are optional.** Scripts whose name contains `test` (e.g. `test`, `test:ci`, `test:cov`) are not required for build or run. Use them only when you want to run tests.
+
 ### Backend
 
 ```bash
@@ -254,11 +262,10 @@ uv run ruff format .
 # Lint
 uv run ruff check .
 
-# Run tests
-uv run pytest
-
-# Run with coverage
-uv run pytest --cov=app --cov-report=html
+# Optional: run tests (requires: uv sync --extra dev)
+uv run test
+uv run test:cov      # with coverage
+uv run test:verbose  # verbose output
 ```
 
 ### Frontend
@@ -277,6 +284,10 @@ pnpm build
 
 # Preview production build
 pnpm preview
+
+# Optional: test scripts (no runner configured by default)
+pnpm test
+pnpm test:ci
 ```
 
 ## Project Structure
@@ -309,6 +320,28 @@ import_visualizer/
 
 ### Backend
 
+Create `.env` file from `.env.example` or set environment variables:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+**Key settings:**
+- `REPOSITORY_ALLOWED_HOSTS` – Comma-separated Git hosts (e.g. `github.com,gitlab.com`). **Empty = allow all hosts** (for private/custom Git servers).
+- `MAX_PROJECT_SIZE_GB` – Maximum project size (default: 10GB)
+- `CACHE_TTL_DAYS` – Cache retention (default: 7 days)
+- `EXTRACTOR_BACKEND` – `auto`, `python`, or `go` (default: auto)
+
+**For private Bitbucket or custom Git servers:**
+
+```bash
+# Option 1: Add your host to the allowlist
+REPOSITORY_ALLOWED_HOSTS=github.com,gitlab.com,bitbucket.mycompany.com
+
+# Option 2: Allow all hosts (empty value)
+REPOSITORY_ALLOWED_HOSTS=
+```
+
 Edit `backend/pyproject.toml` for dependencies and settings.
 
 Default ignore patterns:
@@ -325,26 +358,70 @@ The frontend proxies `/api` requests to the backend automatically.
 
 ## Extending for New Languages
 
-The architecture is designed for extensibility. To add support for a new language:
+The architecture uses a **strategy pattern** for language-specific import resolution. JavaScript/TypeScript support is fully implemented. To add a new language:
 
-1. **Create a Parser** in `backend/app/core/parser/`:
-   ```python
-   class JavaScriptParser:
-       def get_supported_extensions(self) -> list[str]:
-           return [".js", ".jsx"]
-       
-       def parse_file(self, file_path: Path) -> list[ImportInfo]:
-           # Parse JavaScript imports
-           ...
-   ```
+### 1. Create a Parser
 
-2. **Register the Parser** in `backend/app/core/parser/factory.py`:
-   ```python
-   js_parser = JavaScriptParser()
-   ParserRegistry.register_parser(js_parser)
-   ```
+Create a parser in `backend/app/core/parser/`:
 
-3. **Test** with sample projects
+```python
+# backend/app/core/parser/ruby.py
+from pathlib import Path
+from app.api.models import ImportInfo
+
+class RubyParser:
+    def get_supported_extensions(self) -> list[str]:
+        return [".rb"]
+    
+    def parse_file(self, file_path: Path) -> list[ImportInfo]:
+        # Parse Ruby require statements
+        # Return list of ImportInfo objects
+        ...
+```
+
+### 2. Create an Import Resolver
+
+Create a resolver in `backend/app/core/graph/resolvers/`:
+
+```python
+# backend/app/core/graph/resolvers/ruby.py
+from pathlib import Path
+from app.core.graph.resolvers.base import ImportResolver
+
+class RubyImportResolver(ImportResolver):
+    def get_supported_extensions(self) -> list[str]:
+        return [".rb"]
+    
+    def resolve_import(self, source_file: str, import_module: str) -> str | None:
+        # Resolve Ruby require to actual file path
+        # Return absolute path or None if external (gem)
+        ...
+```
+
+### 3. Register Parser & Resolver
+
+Register in `backend/app/core/parser/factory.py`:
+
+```python
+ruby_parser = RubyParser()
+for ext in ruby_parser.get_supported_extensions():
+    cls._parsers[ext] = ruby_parser
+```
+
+Register in `backend/app/core/graph/resolvers/factory.py`:
+
+```python
+if ext in [".rb"]:
+    return RubyImportResolver(project_root)
+```
+
+### 4. Test
+
+Create tests in `backend/tests/test_ruby_resolver.py` and verify resolution works correctly.
+
+**Examples:**
+- ✅ **Python**: Relative imports (`.module`), absolute imports, `__init__.py` packages
+- ✅ **JavaScript/TypeScript**: Relative (`./`, `../`), path aliases (`@/`, `~/`), index files, tsconfig.json
 
 ## Roadmap
 
@@ -370,7 +447,7 @@ The architecture is designed for extensibility. To add support for a new languag
 - [x] SQLite caching layer
 - [x] Dark mode support
 - [x] Keyboard shortcuts (Cmd+K, Esc)
-- [x] Comprehensive test suite (>80% coverage)
+- [x] Comprehensive test suite (>80% coverage, optional)
 - [x] Loading indicators
 - [x] Performance optimization
 
