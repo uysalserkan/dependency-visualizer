@@ -1,0 +1,55 @@
+[project]
+name = "import-visualizer-backend"
+version = "0.1.0"
+description = "Backend service for Python import dependency visualization"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.6.0",
+    "networkx>=3.4.0",
+    "python-multipart>=0.0.12",
+    "structlog>=24.4.0",
+    "slowapi>=0.1.9",
+    "prometheus-fastapi-instrumentator>=7.0.0",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-instrumentation-fastapi>=0.41b0",
+    "opentelemetry-exporter-jaeger>=1.20.0",
+    "sentry-sdk[fastapi]>=1.40.0",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "celery[redis]>=5.3.0",
+    "redis>=5.0.0",
+    "tenacity>=8.2.0",
+    "websockets>=12.0",
+    "strawberry-graphql[fastapi]>=0.219.0",
+    "aiocache>=0.12.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "httpx>=0.27.0",
+    "ruff>=0.7.0",
+    "pyinstrument>=4.6.0",
+    "memray>=1.11.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
