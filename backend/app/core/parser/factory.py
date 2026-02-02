@@ -5,6 +5,7 @@ from pathlib import Path
 from app.core.parser.base import LanguageParser
 from app.core.parser.python import PythonParser
 from app.core.parser.javascript import JavaScriptParser, TypeScriptParser
+from app.core.parser.go import GoParser
 
 
 class ParserRegistry:
@@ -17,22 +18,34 @@ class ParserRegistry:
     def _initialize(cls):
         """Initialize the registry with default parsers."""
         if not cls._initialized:
-            # Register Python parser
-            python_parser = PythonParser()
-            for ext in python_parser.get_supported_extensions():
-                cls._parsers[ext] = python_parser
+            try:
+                # Register Python parser
+                python_parser = PythonParser()
+                for ext in python_parser.get_supported_extensions():
+                    cls._parsers[ext] = python_parser
 
-            # Register JavaScript parser
-            js_parser = JavaScriptParser()
-            for ext in [".js", ".jsx", ".mjs", ".cjs"]:
-                cls._parsers[ext] = js_parser
+                # Register JavaScript parser
+                js_parser = JavaScriptParser()
+                for ext in [".js", ".jsx", ".mjs", ".cjs"]:
+                    cls._parsers[ext] = js_parser
 
-            # Register TypeScript parser
-            ts_parser = TypeScriptParser()
-            for ext in [".ts", ".tsx"]:
-                cls._parsers[ext] = ts_parser
+                # Register TypeScript parser
+                ts_parser = TypeScriptParser()
+                for ext in [".ts", ".tsx"]:
+                    cls._parsers[ext] = ts_parser
 
-            cls._initialized = True
+                # Register Go parser
+                go_parser = GoParser()
+                for ext in go_parser.get_supported_extensions():
+                    cls._parsers[ext] = go_parser
+
+                cls._initialized = True
+            except Exception as e:
+                # Log initialization errors but don't crash
+                import sys
+                print(f"ParserRegistry initialization error: {e}", file=sys.stderr)
+                # At least mark as initialized to avoid infinite retry
+                cls._initialized = True
 
     @classmethod
     def get_parser(cls, file_path: Path) -> LanguageParser | None:
@@ -86,4 +99,6 @@ class ParserRegistry:
                 languages.add("JavaScript")
             elif "TypeScript" in parser_name:
                 languages.add("TypeScript")
+            elif "Go" in parser_name:
+                languages.add("Go")
         return sorted(list(languages))

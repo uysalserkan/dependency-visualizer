@@ -35,13 +35,24 @@ def _parse_file_worker(file_path: Path) -> tuple[Path, list[ImportInfo], str | N
         Tuple of (file_path, imports, error_message)
     """
     try:
+        # Explicitly initialize ParserRegistry in each worker process
+        # (multiprocessing creates new Python interpreters, so class state isn't shared)
+        ParserRegistry._initialize()
+        
+        # Debug: Check what extensions are actually registered
+        import sys
+        supported = ParserRegistry.get_supported_extensions()
+        if file_path.suffix == ".go" and ".go" not in supported:
+            print(f"DEBUG: .go not in supported extensions: {supported}", file=sys.stderr)
+        
         parser = ParserRegistry.get_parser(file_path)
         if parser:
             imports = parser.parse_file(file_path)
             return (file_path, imports, None)
-        return (file_path, [], None)
+        return (file_path, [], f"unsupported extension {file_path.suffix} (available: {supported})")
     except Exception as e:
-        return (file_path, [], str(e))
+        import traceback
+        return (file_path, [], f"{str(e)}\n{traceback.format_exc()}")
 
 
 class ParallelParser:
@@ -79,18 +90,36 @@ class ParallelParser:
             go_fallback_warnings.append(
                 "Extractor backend=go but Go extractor not found (GO_EXTRACTOR_PATH missing or not executable); using Python parsers"
             )
-        if _should_use_go_extractor(extractor_backend) and files:
-            try:
-                return extract_with_go(files, project_path)
-            except Exception as e:
-                go_fallback_warnings = [f"Go extractor failed, using Python parsers: {e}"]
-
+        
+        # Separate Go files from other files
+        # Go extractor doesn't support .go files, so we need to parse them with Python parser
+        go_files = [f for f in files if f.suffix == ".go"]
+        non_go_files = [f for f in files if f.suffix != ".go"]
+        
         all_imports = []
         warnings = list(go_fallback_warnings)
+        
+        # Use Go extractor for non-Go files (Python, JS, TS)
+        if _should_use_go_extractor(extractor_backend) and non_go_files:
+            try:
+                extractor_imports, extractor_warnings = extract_with_go(non_go_files, project_path)
+                all_imports.extend(extractor_imports)
+                warnings.extend(extractor_warnings)
+            except Exception as e:
+                warnings.append(f"Go extractor failed, using Python parsers: {e}")
+                # Fallback: add non-go files back to be parsed by Python
+                go_files.extend(non_go_files)
+        else:
+            # No extractor, parse all non-go files with Python
+            go_files.extend(non_go_files)
+        
+        # Parse Go files (and any fallback files) with Python parsers
+        if not go_files:
+            return all_imports, warnings
 
         # For small projects, use sequential parsing (overhead not worth it)
-        if len(files) < 10:
-            for file_path in files:
+        if len(go_files) < 10:
+            for file_path in go_files:
                 _, imports, error = _parse_file_worker(file_path)
                 if error:
                     warnings.append(f"Error parsing {file_path.relative_to(project_path)}: {error}")
@@ -102,7 +131,7 @@ class ParallelParser:
         # Use parallel processing for larger projects
         try:
             with mp.Pool(processes=self.max_workers) as pool:
-                results = pool.map(_parse_file_worker, files)
+                results = pool.map(_parse_file_worker, go_files)
 
             for file_path, imports, error in results:
                 if error:
@@ -114,7 +143,7 @@ class ParallelParser:
         except Exception as e:
             # Fallback to sequential if parallel fails
             warnings.append(f"Parallel parsing failed, using sequential: {str(e)}")
-            for file_path in files:
+            for file_path in go_files:
                 _, imports, error = _parse_file_worker(file_path)
                 if error:
                     warnings.append(f"Error parsing {file_path.relative_to(project_path)}: {error}")

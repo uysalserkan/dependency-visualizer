@@ -22,6 +22,7 @@ function getLanguageFromPath(filePath: string): string {
     bash: 'bash',
     yaml: 'yaml',
     yml: 'yaml',
+    go: 'go',
   }
   return map[ext] ?? 'text'
 }

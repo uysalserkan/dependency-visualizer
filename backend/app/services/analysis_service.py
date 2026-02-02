@@ -201,6 +201,11 @@ class AnalysisService:
                             warning_count=len(warnings),
                         )
                         
+                        # Log warnings for debugging
+                        if warnings:
+                            for warning in warnings[:10]:  # Log first 10 warnings
+                                logger.warning("Parse warning", message=warning)
+                        
                         # Build dependency graph (CPU-bound, run in thread pool)
                         with tracer.start_as_current_span("build_graph"):
                             graph_builder = await loop.run_in_executor(

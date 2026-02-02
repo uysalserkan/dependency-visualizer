@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useGraphStore } from '@/stores/graphStore'
 
 export function useKeyboardShortcuts() {
-  const { setSearchQuery, setSelectedNode } = useGraphStore()
+  const { setSearchQuery, setSelectedNode, isFullScreen, toggleFullScreen } = useGraphStore()
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -13,10 +13,14 @@ export function useKeyboardShortcuts() {
         searchInput?.focus()
       }
 
-      // Escape: Clear selection
+      // Escape: Exit full screen or clear selection
       if (e.key === 'Escape') {
-        setSelectedNode(null)
-        setSearchQuery('')
+        if (isFullScreen) {
+          toggleFullScreen()
+        } else {
+          setSelectedNode(null)
+          setSearchQuery('')
+        }
       }
 
       // Cmd/Ctrl + /: Toggle help (future)
@@ -28,5 +32,5 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setSearchQuery, setSelectedNode])
+  }, [setSearchQuery, setSelectedNode, isFullScreen, toggleFullScreen])
 }

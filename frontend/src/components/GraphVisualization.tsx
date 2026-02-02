@@ -4,6 +4,7 @@ import cytoscape, { type Core, type NodeSingular } from 'cytoscape'
 import cola from 'cytoscape-cola'
 import { useGraphStore } from '@/stores/graphStore'
 import { useThemeStore } from '@/stores/themeStore'
+import { Maximize2, Minimize2 } from 'lucide-react'
 import type { AnalysisResult } from '@/types/api'
 
 // Register cola layout
@@ -38,6 +39,8 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
     layoutName,
     showExternalNodes,
     searchQuery,
+    isFullScreen,
+    toggleFullScreen,
   } = useGraphStore()
   const isDark = useThemeStore((s) => s.isDark)
 
@@ -137,6 +140,27 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
           },
         },
         {
+          // Connected edges - outgoing (imports)
+          selector: '.connected-out',
+          style: {
+            'line-color': '#3b82f6',  // Blue - represents "imports" (outgoing)
+            'target-arrow-color': '#3b82f6',
+            'width': 3,
+            'opacity': 1,
+          },
+        },
+        {
+          // Connected edges - incoming (imported by)
+          selector: '.connected-in',
+          style: {
+            'line-color': '#10b981',  // Green - represents "imported by" (incoming)
+            'target-arrow-color': '#10b981',
+            'width': 3,
+            'opacity': 1,
+          },
+        },
+        {
+          // Fallback for generic connected (backwards compatibility)
           selector: '.connected',
           style: {
             'line-color': '#8b5cf6',
@@ -175,11 +199,14 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
       const fullNode = nodeById.get(id) ?? null
       setSelectedNode(fullNode)
       
-      // Highlight connected nodes and edges
-      cy.elements().removeClass('highlighted connected dimmed')
+      // Highlight connected nodes and edges with direction-aware colors
+      cy.elements().removeClass('highlighted connected connected-in connected-out dimmed')
       
-      const connectedEdges = node.connectedEdges()
-      const connectedNodes = connectedEdges.connectedNodes()
+      // Get outgoing and incoming edges separately
+      const outgoingEdges = node.connectedEdges(`[source = "${id}"]`)
+      const incomingEdges = node.connectedEdges(`[target = "${id}"]`)
+      const allConnectedEdges = node.connectedEdges()
+      const connectedNodes = allConnectedEdges.connectedNodes()
       
       // Dim unconnected elements
       cy.elements().addClass('dimmed')
@@ -187,14 +214,17 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
       // Highlight the selected node and its connections
       node.removeClass('dimmed').addClass('highlighted')
       connectedNodes.removeClass('dimmed')
-      connectedEdges.removeClass('dimmed').addClass('connected')
+      
+      // Color edges by direction
+      outgoingEdges.removeClass('dimmed').addClass('connected-out')  // Blue for imports (what this node imports)
+      incomingEdges.removeClass('dimmed').addClass('connected-in')   // Green for imported-by (who imports this node)
     })
 
     // Background click handler
     cy.on('tap', (event) => {
       if (event.target === cy) {
         setSelectedNode(null)
-        cy.elements().removeClass('highlighted connected dimmed')
+        cy.elements().removeClass('highlighted connected connected-in connected-out dimmed')
       }
     })
 
@@ -254,16 +284,22 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
       const node = cy.getElementById(selectedNode.id)
       if (node.length > 0) {
         // Clear previous highlights
-        cy.elements().removeClass('highlighted connected dimmed')
+        cy.elements().removeClass('highlighted connected connected-in connected-out dimmed')
         
-        // Highlight selected node and connections
-        const connectedEdges = node.connectedEdges()
-        const connectedNodes = connectedEdges.connectedNodes()
+        // Get outgoing and incoming edges separately
+        const id = selectedNode.id
+        const outgoingEdges = node.connectedEdges(`[source = "${id}"]`)
+        const incomingEdges = node.connectedEdges(`[target = "${id}"]`)
+        const allConnectedEdges = node.connectedEdges()
+        const connectedNodes = allConnectedEdges.connectedNodes()
         
         cy.elements().addClass('dimmed')
         node.removeClass('dimmed').addClass('highlighted')
         connectedNodes.removeClass('dimmed')
-        connectedEdges.removeClass('dimmed').addClass('connected')
+        
+        // Color edges by direction
+        outgoingEdges.removeClass('dimmed').addClass('connected-out')  // Blue for imports
+        incomingEdges.removeClass('dimmed').addClass('connected-in')   // Green for imported-by
         
         // Zoom to node
         cy.animate({
@@ -276,16 +312,71 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
       }
     } else {
       // Clear highlights when no node selected
-      cy.elements().removeClass('highlighted connected dimmed')
+      cy.elements().removeClass('highlighted connected connected-in connected-out dimmed')
     }
   }, [selectedNode])
 
+  // Handle full screen resize
+  useEffect(() => {
+    if (!cyRef.current) return
+    
+    const cy = cyRef.current
+    
+    // Small delay to let the DOM update
+    const timer = setTimeout(() => {
+      cy.resize()
+      cy.fit(undefined, 50)
+    }, 100)
+    
+    return () => clearTimeout(timer)
+  }, [isFullScreen])
+
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full blueprint-grid-light dark:blueprint-grid rounded-xl"
-      role="img"
-      aria-label="Dependency graph visualization"
-    />
+    <div className="relative w-full h-full">
+      <div
+        ref={containerRef}
+        className="w-full h-full blueprint-grid-light dark:blueprint-grid rounded-xl"
+        role="img"
+        aria-label="Dependency graph visualization"
+      />
+      
+      {/* Full Screen Toggle Button */}
+      <button
+        type="button"
+        onClick={toggleFullScreen}
+        className="absolute top-4 right-4 p-2.5 rounded-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 shadow-lg hover:shadow-xl transition-all duration-200 group z-10"
+        aria-label={isFullScreen ? 'Exit full screen' : 'Enter full screen'}
+        title={isFullScreen ? 'Exit full screen (ESC)' : 'Enter full screen'}
+      >
+        {isFullScreen ? (
+          <Minimize2 className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" aria-hidden />
+        ) : (
+          <Maximize2 className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" aria-hidden />
+        )}
+      </button>
+
+      {/* Edge Direction Legend */}
+      {selectedNode && (
+        <div className="absolute bottom-4 left-4 p-3 rounded-lg bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm border border-slate-200 dark:border-slate-700 shadow-lg z-10">
+          <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
+            Edge Colors
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-0.5 bg-blue-500" />
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                Imports (outgoing)
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-0.5 bg-emerald-500" />
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                Imported by (incoming)
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

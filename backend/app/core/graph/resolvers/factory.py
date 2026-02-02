@@ -5,6 +5,7 @@ from pathlib import Path
 from app.core.graph.resolvers.base import ImportResolver
 from app.core.graph.resolvers.javascript import JavaScriptImportResolver
 from app.core.graph.resolvers.python import PythonImportResolver
+from app.core.graph.resolvers.go import GoImportResolver
 
 
 def get_resolver(source_file: str | Path, project_root: Path) -> ImportResolver:
@@ -27,6 +28,10 @@ def get_resolver(source_file: str | Path, project_root: Path) -> ImportResolver:
     # JavaScript/TypeScript files
     if ext in [".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"]:
         return JavaScriptImportResolver(project_root)
+
+    # Go files
+    if ext == ".go":
+        return GoImportResolver(project_root)
 
     # Default to Python resolver (backward compatibility)
     return PythonImportResolver(project_root)
