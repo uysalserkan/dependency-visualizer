@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: import-visualizer
+  labels:
+    name: import-visualizer
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: import-visualizer
+data:
+  APP_NAME: "Import Visualizer API"
+  APP_VERSION: "0.1.0"
+  DEBUG: "false"
+  API_PREFIX: "/api"
+  
+  # Monitoring
+  METRICS_ENABLED: "true"
+  TRACING_ENABLED: "true"
+  JAEGER_HOST: "jaeger-agent"
+  JAEGER_PORT: "6831"
+  
+  # Cache
+  CACHE_DB_PATH: "/data/cache/analysis.db"
+  CACHE_TTL_DAYS: "7"
+  
+  # Redis
+  REDIS_ENABLED: "true"
+  REDIS_URL: "redis://redis:6379/2"
+  REDIS_TTL: "3600"
+  
+  # Celery
+  CELERY_ENABLED: "true"
+  CELERY_BROKER_URL: "redis://redis:6379/0"
+  CELERY_RESULT_BACKEND: "redis://redis:6379/1"
+  
+  # Rate Limiting
+  RATE_LIMIT_ENABLED: "true"
+  RATE_LIMIT_ANALYZE: "10/minute"
+  RATE_LIMIT_EXPORT: "20/minute"
+  RATE_LIMIT_DEFAULT: "30/minute"
+  
+  # Security
+  SECURITY_HEADERS_ENABLED: "true"
+  AUTH_ENABLED: "true"
+  
+  # Audit
+  AUDIT_LOG_ENABLED: "true"
+  AUDIT_LOG_PATH: "/data/logs/audit.log"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: backend-secrets
+  namespace: import-visualizer
+type: Opaque
+stringData:
+  SECRET_KEY: "CHANGE-ME-IN-PRODUCTION-use-kubectl-create-secret"
+  # SENTRY_DSN: "https://your-dsn@sentry.io/project"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backend-cache-pvc
+  namespace: import-visualizer
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backend-logs-pvc
+  namespace: import-visualizer
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: standard
