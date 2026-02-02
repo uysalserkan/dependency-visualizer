@@ -1,6 +1,7 @@
 import { useGraphStore } from '@/stores/graphStore'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { ProjectSelector } from '@/components/ProjectSelector'
+import { RepositorySelector } from '@/components/RepositorySelector'
 import { ImportGraph } from '@/components/ImportGraph'
 import { GraphVisualization } from '@/components/GraphVisualization'
 import { ControlPanel } from '@/components/ControlPanel'
@@ -59,10 +60,11 @@ function App() {
                   Analyze and map import relationships across your entire codebase with beautiful, interactive visualizations.
                 </p>
               </div>
-              <div className="pt-8">
+              <div className="pt-8 grid gap-8 sm:grid-cols-1 lg:grid-cols-2 max-w-4xl mx-auto">
                 <ProjectSelector />
+                <RepositorySelector />
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-500 leading-relaxed">
+              <p className="text-sm text-gray-500 dark:text-gray-500 leading-relaxed pt-4">
                 Supports Python, JavaScript, and TypeScript • Interactive graph visualization • Export in multiple formats
               </p>
             </section>
@@ -78,6 +80,7 @@ function App() {
             {/* Left Sidebar - Control Panel */}
             <aside className="xl:col-span-3 space-y-6 overflow-y-auto" aria-label="Analysis controls">
               <ProjectSelector />
+              <RepositorySelector />
               <ImportGraph />
               <ControlPanel />
             </aside>

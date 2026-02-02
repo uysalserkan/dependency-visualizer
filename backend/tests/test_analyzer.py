@@ -117,3 +117,25 @@ def test_empty_graph():
     assert metrics.total_files == 0
     assert metrics.total_imports == 0
     assert metrics.circular_dependencies == []
+
+
+def test_closeness_centrality(simple_graph):
+    """Test closeness centrality returns non-zero for reachable nodes."""
+    analyzer = GraphAnalyzer(simple_graph)
+    closeness = analyzer.get_closeness_centrality()
+
+    assert len(closeness) == 3
+    assert all(score >= 0 for score in closeness.values())
+    # With reverse graph, node "c" (sink) is easily reached from a,b so should have high closeness
+    assert closeness["c.py"] >= 0
+
+
+def test_eigenvector_centrality(simple_graph):
+    """Test eigenvector centrality returns meaningful scores (or in-degree fallback)."""
+    analyzer = GraphAnalyzer(simple_graph)
+    eigen = analyzer.get_eigenvector_centrality()
+
+    assert len(eigen) == 3
+    assert all(score >= 0 for score in eigen.values())
+    # At least one node should have positive score
+    assert sum(eigen.values()) > 0

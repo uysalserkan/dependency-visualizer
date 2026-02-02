@@ -29,14 +29,21 @@ function getLanguageFromPath(filePath: string): string {
 interface FilePreviewModalProps {
   analysisId: string
   filePath: string
+  projectPath?: string  // To detect if it's an online repository
   onClose: () => void
 }
 
-export function FilePreviewModal({ analysisId, filePath, onClose }: FilePreviewModalProps) {
+export function FilePreviewModal({ analysisId, filePath, projectPath, onClose }: FilePreviewModalProps) {
   const { data: preview, isLoading, error } = useQuery({
     queryKey: ['file-preview', analysisId, filePath],
     queryFn: () => api.getFilePreview(analysisId, filePath),
   })
+
+  // Check if this is an online repository analysis (URL-based)
+  const isOnlineRepository = projectPath?.startsWith('http://') || projectPath?.startsWith('https://')
+  
+  // For online repos, show only filename; for local, show full path
+  const displayPath = isOnlineRepository ? filePath.split('/').pop() || filePath : filePath
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="file-preview-title">
@@ -74,11 +81,11 @@ export function FilePreviewModal({ analysisId, filePath, onClose }: FilePreviewM
           {preview && (
             <div className="space-y-4">
               {/* File Info */}
-              <div className="bg-slate-50 rounded p-3 space-y-1">
-                <div className="text-sm font-medium text-slate-900 break-all">
-                  {preview.file_path}
+              <div className="bg-slate-50 dark:bg-slate-700/50 rounded p-3 space-y-1">
+                <div className="text-sm font-medium text-slate-900 dark:text-slate-100 break-all">
+                  {displayPath}
                 </div>
-                <div className="flex gap-4 text-xs text-slate-600">
+                <div className="flex gap-4 text-xs text-slate-600 dark:text-slate-400">
                   <span>{preview.line_count} lines</span>
                   <span>{(preview.size_bytes / 1024).toFixed(1)} KB</span>
                   <span>{preview.imports.length} imports</span>
@@ -88,10 +95,10 @@ export function FilePreviewModal({ analysisId, filePath, onClose }: FilePreviewM
               {/* Imports */}
               {preview.imports.length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-slate-700">Imports</h3>
-                  <div className="bg-slate-50 rounded p-3 space-y-1 max-h-40 overflow-y-auto">
+                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Imports</h3>
+                  <div className="bg-slate-50 dark:bg-slate-700/50 rounded p-3 space-y-1 max-h-40 overflow-y-auto">
                     {preview.imports.map((imp, i) => (
-                      <div key={i} className="text-xs font-mono text-slate-700">
+                      <div key={i} className="text-xs font-mono text-slate-700 dark:text-slate-300">
                         <span className="text-primary">Line {imp.line_number}:</span>{' '}
                         {imp.import_type === 'from' ? 'from ' : 'import '}
                         <span className="font-semibold">{imp.imported_module}</span>
@@ -104,8 +111,8 @@ export function FilePreviewModal({ analysisId, filePath, onClose }: FilePreviewM
               {/* Code Content */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Code className="w-4 h-4 text-slate-600" />
-                  <h3 className="text-sm font-semibold text-slate-700">Content</h3>
+                  <Code className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Content</h3>
                 </div>
                 <div className="rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 [&>pre]:!my-0 [&>pre]:!rounded-lg [&>pre]:!text-xs [&>pre]:!p-4">
                   <SyntaxHighlighter

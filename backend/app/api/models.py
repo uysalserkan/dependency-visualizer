@@ -29,6 +29,31 @@ class AnalyzeRequest(BaseModel):
         return sanitize_ignore_patterns(v)
 
 
+class AnalyzeRepositoryRequest(BaseModel):
+    """Request model for analyzing a project from a Git repository URL."""
+
+    repository_url: str = Field(..., description="HTTPS URL of the Git repository")
+    branch: str | None = Field(
+        default=None,
+        description="Branch, tag, or commit to analyze (default branch if omitted)",
+    )
+    ignore_patterns: list[str] = Field(
+        default_factory=lambda: [".venv", "venv", "__pycache__", ".git", "node_modules"],
+        description="Patterns to ignore during file discovery",
+    )
+    extractor_backend: Literal["python", "go"] | None = Field(
+        default=None,
+        description="Override extractor: 'python' or 'go'. If omitted, uses EXTRACTOR_BACKEND config.",
+    )
+
+    @field_validator("ignore_patterns")
+    @classmethod
+    def validate_patterns(cls, v):
+        """Validate ignore patterns to prevent ReDoS."""
+        from app.core.validation import sanitize_ignore_patterns
+        return sanitize_ignore_patterns(v)
+
+
 class ImportInfo(BaseModel):
     """Information about a single import statement."""
 
@@ -81,6 +106,13 @@ class CycleDetail(BaseModel):
     edges: list[dict] = Field(default_factory=list, description="Edge details in the cycle")
 
 
+class ModuleCount(BaseModel):
+    """Module name and count (for top importers/imported lists)."""
+
+    module: str = Field(..., description="Module or file path")
+    count: float = Field(..., description="Count (imports or PageRank score)")
+
+
 class ImportStatistics(BaseModel):
     """Statistics about imports in the project."""
 
@@ -91,6 +123,12 @@ class ImportStatistics(BaseModel):
     most_imported_count: int = Field(..., description="Import count of most imported module")
     hub_modules: list[tuple[str, float]] = Field(
         default_factory=list, description="Top hub modules by PageRank"
+    )
+    top_importers: list[ModuleCount] = Field(
+        default_factory=list, description="Modules that import the most others (fan-out)"
+    )
+    top_imported: list[ModuleCount] = Field(
+        default_factory=list, description="Most imported modules (fan-in)"
     )
 
 
@@ -111,6 +149,13 @@ class GraphMetrics(BaseModel):
     total_cycles: int = Field(default=0, description="Total number of circular dependencies")
     # Phase 2: project-level
     external_edges_ratio: float = Field(default=0.0, description="Share of all edges that point to external nodes (0-1)")
+    # Enriched project metrics
+    entry_points_count: int = Field(default=0, description="Number of internal modules with no incoming imports")
+    external_node_count: int = Field(default=0, description="Number of distinct external packages referenced")
+    internal_edges: int = Field(default=0, description="Edges between internal modules (excludes external)")
+    avg_cycle_length: float = Field(default=0.0, description="Average length of circular dependency cycles")
+    max_cycle_length: int = Field(default=0, description="Longest circular dependency cycle length")
+    largest_scc_size: int = Field(default=0, description="Size of largest strongly connected component (tangled core)")
 
 
 class FilePreview(BaseModel):
@@ -124,7 +169,23 @@ class FilePreview(BaseModel):
 
 
 class AnalysisResult(BaseModel):
-    """Complete analysis result."""
+    """Complete analysis result (includes optional file_contents for repo View File)."""
+
+    id: str = Field(..., description="Unique analysis ID")
+    project_path: str = Field(..., description="Analyzed project path")
+    nodes: list[Node] = Field(..., description="Graph nodes")
+    edges: list[Edge] = Field(..., description="Graph edges")
+    metrics: GraphMetrics = Field(..., description="Analysis metrics")
+    warnings: list[str] = Field(default_factory=list, description="Analysis warnings")
+    # For repository analyses: file path (relative, normalized) -> content (truncated). Stored in cache only; not in API response.
+    file_contents: dict[str, str] | None = Field(
+        default=None,
+        description="Cached file contents for remote/repo analyses (optional)",
+    )
+
+
+class AnalysisResultResponse(BaseModel):
+    """Analysis result as returned by API (excludes file_contents to keep payload small)."""
 
     id: str = Field(..., description="Unique analysis ID")
     project_path: str = Field(..., description="Analyzed project path")

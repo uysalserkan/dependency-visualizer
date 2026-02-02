@@ -82,14 +82,19 @@ uv run ruff check .
 uv run ruff check --fix .
 ```
 
-### Testing
+### Testing (optional)
+
+All test-related scripts are optional; build and run do not depend on them. Install dev dependencies first: `uv sync --extra dev`.
 
 ```bash
 # Run all tests
-uv run pytest
+uv run test
 
-# Run with coverage
-uv run pytest --cov=app --cov-report=html
+# With coverage
+uv run test:cov
+
+# Verbose
+uv run test:verbose
 ```
 
 ## Architecture

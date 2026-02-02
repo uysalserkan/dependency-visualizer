@@ -27,9 +27,64 @@ from app.core.metrics import (
 )
 from app.core.parallel_parser import ParallelParser
 from app.core.trace_decorators import traced
+from app.core.repository import clone_repository, remove_clone, repo_cache_id
 from app.core.validation import validate_project_path
 
 logger = get_logger(__name__)
+
+
+def _normalize_file_key(path: str) -> str:
+    """Normalize path for use as cache key (forward slashes, no leading slash)."""
+    p = Path(path)
+    parts = p.parts
+    if parts and parts[0] in ("/", "\\"):
+        parts = parts[1:]
+    return "/".join(parts).replace("\\", "/")
+
+
+def _collect_file_contents(
+    clone_path: Path,
+    nodes: list,
+    max_files: int = 500,
+    max_bytes_per_file: int = 1024 * 100,
+) -> dict[str, str]:
+    """Read file contents for graph nodes under clone_path (for repo View File).
+    Returns dict of path_key -> content (truncated). Stores under both relative and absolute
+    path so lookup works whether frontend sends node.file_path as absolute or relative.
+    Skips binary/unreadable.
+    """
+    contents: dict[str, str] = {}
+    seen: set[str] = set()
+    clone_resolved = clone_path.resolve()
+    for node in nodes:
+        if len(contents) >= max_files:
+            break
+        path_str = getattr(node, "file_path", None) or getattr(node, "id", None)
+        if not path_str or path_str in seen:
+            continue
+        try:
+            path = Path(path_str)
+            resolved = (clone_path / path).resolve() if not path.is_absolute() else Path(path_str).resolve()
+            if not resolved.is_file():
+                continue
+            try:
+                rel = resolved.relative_to(clone_resolved)
+            except ValueError:
+                continue
+            rel_key = _normalize_file_key(str(rel))
+            if rel_key in contents:
+                continue
+            seen.add(path_str)
+            with open(resolved, "r", encoding="utf-8") as f:
+                content = f.read(max_bytes_per_file)
+            contents[rel_key] = content
+            # Also store under absolute path so lookup works when frontend sends node.file_path (absolute)
+            abs_key = str(resolved)
+            if abs_key != rel_key:
+                contents[abs_key] = content
+        except (ValueError, OSError, UnicodeDecodeError):
+            continue
+    return contents
 tracer = trace.get_tracer(__name__)
 
 
@@ -211,7 +266,7 @@ class AnalysisService:
                         )
                         
                         return result
-                        
+                
                     except AnalysisError:
                         analysis_requests_total.labels(status="error").inc()
                         span.set_attribute("analysis.status", "error")
@@ -227,6 +282,106 @@ class AnalysisService:
                         )
             finally:
                 active_analyses.dec()
+
+    async def analyze_repository(
+        self,
+        repository_url: str,
+        branch: str | None = None,
+        ignore_patterns: list[str] | None = None,
+        extractor_backend: str | None = None,
+    ) -> AnalysisResult:
+        """Clone a Git repository and analyze it (with cache by URL + ref).
+
+        Same (url, branch) returns cached result when available; otherwise clones,
+        analyzes, saves under a deterministic cache ID, then removes the clone.
+
+        Args:
+            repository_url: HTTPS Git URL (e.g. https://github.com/user/repo)
+            branch: Branch, tag, or commit to checkout (None = default branch)
+            ignore_patterns: Patterns to ignore during file discovery
+            extractor_backend: Override extractor: "python" or "go"; None uses config
+
+        Returns:
+            Analysis result with graph data and metrics
+
+        Raises:
+            ValidationError: If URL invalid or clone fails
+            AnalysisError: If analysis fails
+        """
+        from app.config import settings
+
+        if not settings.REPOSITORY_ANALYSIS_ENABLED:
+            raise ValidationError(
+                "Repository analysis is disabled",
+                details={"REPOSITORY_ANALYSIS_ENABLED": False},
+            )
+
+        cache_id = repo_cache_id(repository_url, branch)
+
+        # Cache hit: return existing result (memory or SQLite)
+        if cache_id in self._memory_cache:
+            cache_hits_total.inc()
+            self._memory_cache.move_to_end(cache_id)
+            return self._memory_cache[cache_id][0]
+        cached = self.cache.get(cache_id)
+        if cached is not None:
+            cache_hits_total.inc()
+            logger.info("Repository analysis cache hit", cache_id=cache_id)
+            return cached
+
+        cache_misses_total.inc()
+        clone_path: Path | None = None
+        loop = asyncio.get_event_loop()
+
+        try:
+            clone_path = await loop.run_in_executor(
+                self.executor,
+                lambda: clone_repository(
+                    repository_url,
+                    branch=branch,
+                ),
+            )
+            result = await self.analyze_project(
+                project_path=str(clone_path),
+                ignore_patterns=ignore_patterns,
+                extractor_backend=extractor_backend,
+            )
+            # Cache file contents for View File (clone is removed after this)
+            file_contents = await loop.run_in_executor(
+                self.executor,
+                lambda: _collect_file_contents(
+                    clone_path,
+                    result.nodes,
+                    max_files=settings.REPOSITORY_FILE_PREVIEW_MAX_FILES,
+                    max_bytes_per_file=settings.REPOSITORY_FILE_PREVIEW_MAX_BYTES_PER_FILE,
+                ),
+            )
+            # Save under deterministic ID and use repo URL as project_path for display
+            from app.api.models import AnalysisResult
+
+            repo_result = AnalysisResult(
+                id=cache_id,
+                project_path=repository_url,
+                nodes=result.nodes,
+                edges=result.edges,
+                metrics=result.metrics,
+                warnings=result.warnings,
+                file_contents=file_contents,
+            )
+            self.cache.save(repo_result)
+            self._cache_in_memory(cache_id, (repo_result, None, None))
+            logger.info(
+                "Repository analysis cached",
+                cache_id=cache_id,
+                node_count=len(repo_result.nodes),
+            )
+            return repo_result
+        finally:
+            if clone_path is not None:
+                await loop.run_in_executor(
+                    self.executor,
+                    lambda: remove_clone(clone_path),
+                )
 
     def get_analysis(self, analysis_id: str) -> AnalysisResult:
         """Get cached analysis result.

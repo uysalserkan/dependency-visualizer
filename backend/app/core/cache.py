@@ -9,6 +9,12 @@ from typing import Optional
 from app.api.models import AnalysisResult
 
 
+def _parse_row_to_result(row: tuple) -> AnalysisResult:
+    """Parse (data,) row to AnalysisResult."""
+    data = json.loads(row[0])
+    return AnalysisResult(**data)
+
+
 class CacheDB:
     """SQLite database for caching analysis results."""
 
@@ -129,10 +135,30 @@ class CacheDB:
             row = cursor.fetchone()
 
             if row:
-                data = json.loads(row[0])
-                return AnalysisResult(**data)
+                return _parse_row_to_result(row)
 
         return None
+
+    def list_analyses(self, limit: int = 10) -> list[AnalysisResult]:
+        """List most recently accessed analyses.
+
+        Args:
+            limit: Maximum number of results
+
+        Returns:
+            List of analysis results, newest first by last_accessed
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                """
+                SELECT data FROM analysis_cache
+                ORDER BY last_accessed DESC
+                LIMIT ?
+                """,
+                (max(1, limit),),
+            )
+            rows = cursor.fetchall()
+        return [_parse_row_to_result((row[0],)) for row in rows]
 
     def delete(self, analysis_id: str) -> bool:
         """Delete analysis from cache.

@@ -9,6 +9,22 @@ import type { AnalysisResult } from '@/types/api'
 // Register cola layout
 cytoscape.use(cola)
 
+// Distinct palette so each node gets a different color (stable by node id)
+const NODE_COLOR_PALETTE = [
+  '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899',
+  '#f43f5e', '#ef4444', '#f97316', '#eab308', '#84cc16',
+  '#22c55e', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6',
+  '#2563eb', '#7c3aed', '#db2777', '#dc2626', '#ea580c',
+  '#ca8a04', '#65a30d', '#059669', '#0891b2', '#0284c7',
+]
+
+function nodeColorForId(id: string): string {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = ((h << 5) - h) + id.charCodeAt(i) | 0
+  const idx = Math.abs(h) % NODE_COLOR_PALETTE.length
+  return NODE_COLOR_PALETTE[idx]
+}
+
 interface GraphVisualizationProps {
   analysis: AnalysisResult
 }
@@ -17,6 +33,7 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<Core | null>(null)
   const {
+    selectedNode,
     setSelectedNode,
     layoutName,
     showExternalNodes,
@@ -47,11 +64,12 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
             file_path: node.file_path,
           },
         })),
+        // Arrow direction: dependency → consumer (e.g. utils → me when I import utils). API gives (importer, imported), we swap for display.
         edges: edges.map(edge => ({
           data: {
             id: `${edge.source}-${edge.target}`,
-            source: edge.source,
-            target: edge.target,
+            source: edge.target,
+            target: edge.source,
           },
         })),
       },
@@ -59,12 +77,7 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
         {
           selector: 'node',
           style: {
-            'background-color': (ele: NodeSingular) => {
-              const nodeType = ele.data('node_type')
-              if (nodeType === 'external') return isDark ? '#64748b' : '#94a3b8'
-              if (nodeType === 'package') return '#8b5cf6'
-              return '#6366f1'
-            },
+            'background-color': (ele: NodeSingular) => nodeColorForId(ele.data('id')),
             'label': 'data(label)',
             'width': (ele: NodeSingular) => {
               const degree = ele.degree()
@@ -81,7 +94,10 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
             'text-wrap': 'wrap',
             'text-max-width': '100px',
             'border-width': 2,
-            'border-color': isDark ? '#475569' : '#ffffff',
+            'border-color': (ele: NodeSingular) => {
+              const c = nodeColorForId(ele.data('id'))
+              return c
+            },
           },
         },
         {
@@ -228,10 +244,46 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
     }).run()
   }, [layoutName])
 
+  // Handle external selectedNode change (e.g. from ExternalPackagesModal)
+  useEffect(() => {
+    if (!cyRef.current) return
+    
+    const cy = cyRef.current
+    
+    if (selectedNode) {
+      const node = cy.getElementById(selectedNode.id)
+      if (node.length > 0) {
+        // Clear previous highlights
+        cy.elements().removeClass('highlighted connected dimmed')
+        
+        // Highlight selected node and connections
+        const connectedEdges = node.connectedEdges()
+        const connectedNodes = connectedEdges.connectedNodes()
+        
+        cy.elements().addClass('dimmed')
+        node.removeClass('dimmed').addClass('highlighted')
+        connectedNodes.removeClass('dimmed')
+        connectedEdges.removeClass('dimmed').addClass('connected')
+        
+        // Zoom to node
+        cy.animate({
+          center: { eles: node },
+          zoom: 1.5,
+        }, {
+          duration: 500,
+          easing: 'ease-in-out-cubic',
+        })
+      }
+    } else {
+      // Clear highlights when no node selected
+      cy.elements().removeClass('highlighted connected dimmed')
+    }
+  }, [selectedNode])
+
   return (
     <div
       ref={containerRef}
-      className="w-full h-full bg-gray-100 dark:bg-gray-900 dot-pattern-light dark:dot-pattern rounded-xl"
+      className="w-full h-full blueprint-grid-light dark:blueprint-grid rounded-xl"
       role="img"
       aria-label="Dependency graph visualization"
     />

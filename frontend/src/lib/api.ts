@@ -1,4 +1,10 @@
-import type { AnalysisResult, AnalyzeRequest, FilePreview, InsightsResponse } from '@/types/api'
+import type {
+  AnalysisResult,
+  AnalyzeRequest,
+  AnalyzeRepositoryRequest,
+  FilePreview,
+  InsightsResponse,
+} from '@/types/api'
 
 const API_BASE_URL = '/api'
 
@@ -15,6 +21,28 @@ export const api = {
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
       throw new Error(error.detail || 'Failed to analyze project')
+    }
+
+    return response.json()
+  },
+
+  async analyzeRepository(request: AnalyzeRepositoryRequest): Promise<AnalysisResult> {
+    const response = await fetch(`${API_BASE_URL}/analyze/repository`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        repository_url: request.repository_url,
+        branch: request.branch ?? undefined,
+        ignore_patterns: request.ignore_patterns,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
+      const message = typeof error.detail === 'string' ? error.detail : error.detail?.message ?? 'Failed to analyze repository'
+      throw new Error(message)
     }
 
     return response.json()

@@ -9,6 +9,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install git for repository clone (POST /api/analyze/repository)
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy Go extractor binary from builder
 COPY --from=extractor-builder /extractor-binary /usr/local/bin/extractor
 RUN chmod +x /usr/local/bin/extractor

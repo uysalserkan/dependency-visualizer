@@ -42,6 +42,11 @@ export interface CycleDetail {
   edges: any[]
 }
 
+export interface ModuleCount {
+  module: string
+  count: number
+}
+
 export interface ImportStatistics {
   avg_imports_per_file: number
   max_imports_in_file: number
@@ -49,6 +54,8 @@ export interface ImportStatistics {
   most_imported_module: string
   most_imported_count: number
   hub_modules: [string, number][]
+  top_importers?: ModuleCount[]
+  top_imported?: ModuleCount[]
 }
 
 export interface GraphMetrics {
@@ -65,6 +72,18 @@ export interface GraphMetrics {
   total_cycles?: number
   /** Phase 2: share of all edges pointing to external nodes (0-1) */
   external_edges_ratio?: number
+  /** Enriched: internal modules with no incoming imports */
+  entry_points_count?: number
+  /** Enriched: distinct external packages referenced */
+  external_node_count?: number
+  /** Enriched: edges between internal modules only */
+  internal_edges?: number
+  /** Enriched: average cycle length */
+  avg_cycle_length?: number
+  /** Enriched: longest cycle length */
+  max_cycle_length?: number
+  /** Enriched: size of largest strongly connected component */
+  largest_scc_size?: number
 }
 
 export interface FilePreview {
@@ -113,5 +132,11 @@ export interface AnalysisResult {
 export interface AnalyzeRequest {
   project_path: string
   include_external?: boolean
+  ignore_patterns?: string[]
+}
+
+export interface AnalyzeRepositoryRequest {
+  repository_url: string
+  branch?: string | null
   ignore_patterns?: string[]
 }

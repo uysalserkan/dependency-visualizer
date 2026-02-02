@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import networkx as nx
 
 from app.api.models import Edge, ImportInfo, Node
+from app.core.graph.resolvers import get_resolver
 
 if TYPE_CHECKING:
     from app.api.models import AnalysisResult
@@ -63,17 +64,36 @@ class GraphBuilder:
             )
         return cls.from_graph(graph, analysis.project_path)
 
+    def _canonical_node_id(self, source_file: str, import_module: str) -> str:
+        """Resolve import to a canonical node ID (file path for internal, module name for external).
+
+        Ensures that `import x`, `from x import y`, `import .x`, `from .x import y` etc.
+        that refer to the same file are represented as a single node (the resolved path).
+
+        Args:
+            source_file: File containing the import
+            import_module: Raw imported module name (e.g. "x", ".x", "pkg.mod")
+
+        Returns:
+            Canonical node ID: resolved absolute path for project files, else import_module for external
+        """
+        resolved = self._resolve_import_to_file(source_file, import_module)
+        return resolved if resolved else import_module
+
     def add_imports(self, imports: list[ImportInfo]):
         """Add imports to the graph.
 
-        Args:
-            imports: List of import information
+        Uses canonical node IDs so that different import forms (import x, from x import y,
+        .x, from .x import y) that refer to the same file are merged into one node.
         """
         for import_info in imports:
             source = import_info.source_file
-            target = import_info.imported_module
+            raw_target = import_info.imported_module
 
-            # Store import data for later use
+            # Canonical target: same file => same node ID (resolved path for internal, name for external)
+            target = self._canonical_node_id(source, raw_target)
+
+            # Store import data for later use (keyed by raw module for debugging)
             if source not in self.import_data:
                 self.import_data[source] = []
             self.import_data[source].append(import_info)
@@ -83,15 +103,15 @@ class GraphBuilder:
                 self.graph.add_node(source, node_type="module", file_path=source)
 
             # Determine if target is internal (project file) or external (library)
-            target_path = self._resolve_import_to_file(source, target)
+            target_path = self._resolve_import_to_file(source, raw_target)
             node_type = "module" if target_path else "external"
 
             if not self.graph.has_node(target):
                 self.graph.add_node(
-                    target, node_type=node_type, file_path=target_path or target
+                    target, node_type=node_type, file_path=target_path or raw_target
                 )
 
-            # Add or update edge
+            # Add or update edge (source -> canonical target)
             if self.graph.has_edge(source, target):
                 # Update existing edge with additional line number
                 edge_data = self.graph[source][target]
@@ -110,48 +130,17 @@ class GraphBuilder:
     def _resolve_import_to_file(self, source_file: str, import_module: str) -> str | None:
         """Try to resolve an import to an actual file in the project.
 
+        Uses language-specific resolvers based on source file extension.
+
         Args:
             source_file: File containing the import
-            import_module: Module being imported
+            import_module: Module being imported (e.g. "x", ".x", "./utils", "@/components")
 
         Returns:
-            Resolved file path or None if external
+            Absolute resolved file path or None if external
         """
-        # Handle relative imports
-        if import_module.startswith("."):
-            source_path = Path(source_file).parent
-            level = len(import_module) - len(import_module.lstrip("."))
-            module_name = import_module.lstrip(".")
-
-            # Go up 'level' directories
-            for _ in range(level - 1):
-                source_path = source_path.parent
-
-            # Try to resolve the module
-            if module_name:
-                module_path = source_path / module_name.replace(".", "/")
-            else:
-                module_path = source_path
-
-            # Check if it's a package or module
-            if (module_path / "__init__.py").exists():
-                return str(module_path / "__init__.py")
-            elif (module_path.parent / f"{module_path.name}.py").exists():
-                return str(module_path.parent / f"{module_path.name}.py")
-
-        # Handle absolute imports within the project
-        module_path = self.project_root / import_module.replace(".", "/")
-
-        # Check if it's a package (has __init__.py)
-        if (module_path / "__init__.py").exists():
-            return str(module_path / "__init__.py")
-
-        # Check if it's a module file
-        if (module_path.parent / f"{module_path.name}.py").exists():
-            return str(module_path.parent / f"{module_path.name}.py")
-
-        # External module
-        return None
+        resolver = get_resolver(source_file, self.project_root)
+        return resolver.resolve_import(source_file, import_module)
 
     def get_nodes(
         self,

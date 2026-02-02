@@ -28,6 +28,7 @@ dependencies = [
     "aiocache>=0.12.2",
 ]
 
+# Test dependencies are optional: install with uv sync --extra dev
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3.0",
@@ -38,6 +39,12 @@ dev = [
     "pyinstrument>=4.6.0",
     "memray>=1.11.0",
 ]
+
+# All test* scripts are optional: not required for build or run. Install dev deps: uv sync --extra dev
+[tool.uv.scripts]
+test = "pytest"
+"test:cov" = "pytest --cov=app --cov-report=html"
+"test:verbose" = "pytest -v"
 
 [tool.ruff]
 line-length = 100

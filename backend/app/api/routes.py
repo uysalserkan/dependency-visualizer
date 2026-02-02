@@ -5,7 +5,15 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
 
-from app.api.models import AnalyzeRequest, AnalysisResult, FilePreview, InsightsResponse, ImportInfo
+from app.api.models import (
+    AnalyzeRequest,
+    AnalyzeRepositoryRequest,
+    AnalysisResult,
+    AnalysisResultResponse,
+    FilePreview,
+    InsightsResponse,
+    ImportInfo,
+)
 from app.config import settings
 from app.core.exceptions import AnalysisError, NotFoundError, SecurityError, ValidationError
 from app.core.graph.builder import GraphBuilder
@@ -13,7 +21,7 @@ from app.core.language_detector import LanguageDetector
 from app.core.logging import get_logger
 from app.dependencies import get_analysis_service, get_cache_db, get_language_detector
 from app.middleware.rate_limiter import limiter
-from app.services.analysis_service import AnalysisService
+from app.services.analysis_service import AnalysisService, _normalize_file_key
 
 logger = get_logger(__name__)
 
@@ -25,7 +33,7 @@ def _rate_limit_exempt() -> bool:
     return not settings.RATE_LIMIT_ENABLED
 
 
-@router.post("/analyze", response_model=AnalysisResult)
+@router.post("/analyze", response_model=AnalysisResultResponse)
 @limiter.limit(settings.RATE_LIMIT_ANALYZE, exempt_when=_rate_limit_exempt)
 async def analyze_project(
     request: Request,
@@ -49,14 +57,48 @@ async def analyze_project(
         ignore_patterns=analyze_request.ignore_patterns,
         extractor_backend=analyze_request.extractor_backend,
     )
-    # Return Response so slowapi can inject rate-limit headers
+    # Return Response so slowapi can inject rate-limit headers (exclude file_contents to keep payload small)
     return JSONResponse(
-        content=result.model_dump(),
+        content=result.model_dump(exclude={"file_contents"}),
         status_code=200,
     )
 
 
-@router.get("/analysis/{analysis_id}", response_model=AnalysisResult)
+@router.post("/analyze/repository", response_model=AnalysisResultResponse)
+@limiter.limit(settings.RATE_LIMIT_ANALYZE_REPO, exempt_when=_rate_limit_exempt)
+async def analyze_repository(
+    request: Request,
+    body: AnalyzeRepositoryRequest,
+    service: AnalysisService = Depends(get_analysis_service),
+):
+    """Analyze a project from a Git repository URL (HTTPS).
+
+    Clones the repository to a temporary directory, runs analysis, then removes the clone.
+    Rate limit: 5 requests per minute (clone + analysis).
+
+    Supported hosts (configurable): github.com, gitlab.com, bitbucket.org, etc.
+
+    Args:
+        request: FastAPI request (required by rate limiter)
+        body: Repository URL, optional branch/tag/commit, ignore patterns
+        service: Injected analysis service
+
+    Returns:
+        Analysis result with graph data and metrics
+    """
+    result = await service.analyze_repository(
+        repository_url=body.repository_url,
+        branch=body.branch,
+        ignore_patterns=body.ignore_patterns,
+        extractor_backend=body.extractor_backend,
+    )
+    return JSONResponse(
+        content=result.model_dump(exclude={"file_contents"}),
+        status_code=200,
+    )
+
+
+@router.get("/analysis/{analysis_id}", response_model=AnalysisResultResponse)
 async def get_analysis(
     analysis_id: str,
     service: AnalysisService = Depends(get_analysis_service),
@@ -68,9 +110,10 @@ async def get_analysis(
         service: Injected analysis service
         
     Returns:
-        Analysis result
+        Analysis result (file_contents excluded to keep payload small)
     """
-    return service.get_analysis(analysis_id)
+    result = service.get_analysis(analysis_id)
+    return AnalysisResultResponse(**result.model_dump(exclude={"file_contents"}))
 
 
 @router.delete("/analysis/{analysis_id}")
@@ -92,7 +135,7 @@ async def delete_analysis(
     return {"message": "Analysis deleted successfully"}
 
 
-@router.post("/analysis/import", response_model=AnalysisResult)
+@router.post("/analysis/import", response_model=AnalysisResultResponse)
 async def import_graph(
     file: UploadFile = File(..., description="Exported graph file (.json, .graphml, .gexf)"),
     service: AnalysisService = Depends(get_analysis_service),
@@ -114,7 +157,7 @@ async def import_graph(
         if not content:
             raise HTTPException(status_code=400, detail="Empty file")
         result = await service.import_graph_from_file(content, file.filename or "export.json")
-        return JSONResponse(content=result.model_dump(), status_code=200)
+        return JSONResponse(content=result.model_dump(exclude={"file_contents"}), status_code=200)
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -130,6 +173,9 @@ async def get_file_preview(
 ):
     """Get preview of a file's content and imports.
     
+    For repository analyses, content is served from cached file_contents (no disk).
+    For local analyses, content is read from project_path on disk.
+    
     Args:
         analysis_id: ID of the analysis
         file_path: Path to file within project
@@ -139,36 +185,70 @@ async def get_file_preview(
         File preview with content and imports
     """
     try:
-        # Get analysis from cache (disk or memory) for project root and edges
         analysis = service.get_analysis(analysis_id)
+
+        # Repository analysis: serve from cached file_contents (clone was removed)
+        if analysis.file_contents:
+            # Lookup: frontend may send node.file_path as absolute or relative
+            key = file_path if file_path in analysis.file_contents else _normalize_file_key(file_path)
+            content = analysis.file_contents.get(key)
+            if content is None:
+                # Try matching by suffix (e.g. absolute path ends with relative key)
+                for k, v in analysis.file_contents.items():
+                    if file_path == k or file_path.endswith(k) or k.endswith(file_path):
+                        content = v
+                        key = k
+                        break
+            if content is not None:
+                imports = [
+                    ImportInfo(
+                        source_file=edge.source,
+                        imported_module=edge.target,
+                        import_type=edge.import_type,
+                        line_number=edge.line_numbers[0] if edge.line_numbers else 0,
+                    )
+                    for edge in analysis.edges
+                    if _normalize_file_key(edge.source) == key
+                ]
+                return FilePreview(
+                    file_path=key,
+                    content=content,
+                    line_count=content.count("\n") + 1 if content else 0,
+                    size_bytes=len(content.encode("utf-8")),
+                    imports=imports,
+                )
+            raise HTTPException(
+                status_code=404,
+                detail="File not found in cached analysis",
+            )
+
+        # Remote analysis but no file_contents (e.g. old cache entry)
+        if analysis.project_path.startswith(("http://", "https://")):
+            raise HTTPException(
+                status_code=404,
+                detail="File preview is not available for this analysis. Re-analyze the repository to enable View File.",
+            )
+
+        # Local analysis: read from disk
         project_path = Path(analysis.project_path)
-        
-        # Validate file path (security)
         from app.core.validation import sanitize_file_path
         file_path_obj = sanitize_file_path(file_path, project_path)
-        
-        # Read file content
+
         try:
             with open(file_path_obj, "r", encoding="utf-8") as f:
-                # Read with size limit
                 max_size = settings.MAX_FILE_PREVIEW_SIZE
                 content = f.read(max_size)
-                truncated = f.read(1) != ""  # Check if there's more
+                truncated = f.read(1) != ""
         except UnicodeDecodeError:
             content = "[Binary file - preview not available]"
             truncated = False
         except Exception as e:
             logger.error("Failed to read file", file_path=str(file_path_obj), error=str(e))
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to read file"
-            )
-        
-        # Get imports for this file (edges where this file is the source)
-        # Normalize paths for comparison (edge.source may be absolute or relative to project)
+            raise HTTPException(status_code=500, detail="Failed to read file")
+
         file_path_str = str(file_path_obj)
         file_path_resolved = str(file_path_obj.resolve())
-        imports: list[ImportInfo] = []
+        imports = []
         for edge in analysis.edges:
             edge_source_resolved = str(
                 (project_path / edge.source).resolve()
@@ -196,7 +276,9 @@ async def get_file_preview(
             size_bytes=size_bytes,
             imports=imports,
         )
-    
+
+    except HTTPException:
+        raise
     except SecurityError as e:
         logger.warning("Security violation in file preview", error=str(e))
         raise HTTPException(status_code=403, detail=str(e))

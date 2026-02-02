@@ -1,5 +1,7 @@
 """API error handlers."""
 
+import logging
+
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 
@@ -63,7 +65,7 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
             "error": {
                 "code": error_code,
                 "message": exc.message,
-                "details": exc.details if logger.isEnabledFor("DEBUG") else {},
+                "details": exc.details if logger.isEnabledFor(logging.DEBUG) else {},
             }
         },
     )

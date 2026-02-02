@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "test": "echo \"Tests are optional; no test runner configured. Run when you add a test framework.\"",
+    "test:ci": "echo \"Skipped (optional).\"",
+    "test:coverage": "echo \"Coverage is optional; no test runner configured.\""
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.7",

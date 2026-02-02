@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_ANALYZE: str = "10/minute"  # Heavy analysis endpoint
+    RATE_LIMIT_ANALYZE_REPO: str = "5/minute"  # Clone + analyze (heavier)
     RATE_LIMIT_EXPORT: str = "20/minute"   # Medium endpoint
     RATE_LIMIT_DEFAULT: str = "30/minute"  # Light endpoints
     
@@ -82,6 +83,25 @@ class Settings(BaseSettings):
     
     # Security Headers
     SECURITY_HEADERS_ENABLED: bool = True
+    
+    # Repository analysis (online Git URL)
+    REPOSITORY_ANALYSIS_ENABLED: bool = True
+    # Allowed Git hosts. Empty list = allow all hosts (useful for private Git servers)
+    REPOSITORY_ALLOWED_HOSTS: list[str] = [
+        "github.com",
+        "gitlab.com",
+        "bitbucket.org",
+        "gitea.com",
+        "codeberg.org",
+        "bitbucket.int.sahibinden.com"
+    ]
+    REPOSITORY_CLONE_TIMEOUT: int = 120  # seconds
+    REPOSITORY_CLONE_DEPTH: int = 1  # 1 = shallow (latest commit), 0 = full history
+    REPOSITORY_WORK_DIR: str = ""  # empty = system temp dir
+    REPOSITORY_MAX_SIZE_MB: int = 500  # 0 = no limit; check after clone
+    # File preview cache for repo analyses (so View File works without disk)
+    REPOSITORY_FILE_PREVIEW_MAX_FILES: int = 500  # max files to store content for
+    REPOSITORY_FILE_PREVIEW_MAX_BYTES_PER_FILE: int = 1024 * 100  # 100KB per file (same as MAX_FILE_PREVIEW_SIZE)
     
     # Audit Logging
     AUDIT_LOG_ENABLED: bool = True

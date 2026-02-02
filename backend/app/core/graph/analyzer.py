@@ -3,6 +3,9 @@
 import networkx as nx
 
 from app.api.models import GraphMetrics
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class GraphAnalyzer:
@@ -44,33 +47,64 @@ class GraphAnalyzer:
     def get_pagerank_scores(self) -> dict[str, float]:
         """Calculate PageRank scores for all nodes.
 
-        Returns:
-            Dictionary mapping node IDs to PageRank scores
-        """
-        if self._pagerank_cache is None:
-            try:
-                self._pagerank_cache = nx.pagerank(self.graph)
-            except Exception:
-                # Return uniform scores if PageRank fails
-                n = self.graph.number_of_nodes()
-                self._pagerank_cache = {node: 1.0 / n for node in self.graph.nodes()}
+        Edge direction: A -> B means A imports B, so B receives rank from A.
+        High PageRank = heavily imported (many dependents).
 
-        return self._pagerank_cache
+        Returns:
+            Dictionary mapping node IDs to PageRank scores (sum ≈ 1.0)
+        """
+        if self._pagerank_cache is not None:
+            return self._pagerank_cache
+
+        n = self.graph.number_of_nodes()
+        if n == 0:
+            self._pagerank_cache = {}
+            return self._pagerank_cache
+        if n == 1:
+            node = list(self.graph.nodes())[0]
+            self._pagerank_cache = {node: 1.0}
+            return self._pagerank_cache
+
+        try:
+            # alpha=0.85: damping factor; follow edges (importer -> imported)
+            self._pagerank_cache = nx.pagerank(
+                self.graph,
+                alpha=0.85,
+                max_iter=100,
+                tol=1.0e-6,
+            )
+            return self._pagerank_cache
+        except Exception as e:
+            logger.warning("PageRank failed, using uniform scores", error=str(e))
+            self._pagerank_cache = {node: 1.0 / n for node in self.graph.nodes()}
+            return self._pagerank_cache
 
     def get_betweenness_centrality(self) -> dict[str, float]:
         """Calculate betweenness centrality for all nodes.
 
-        Returns:
-            Dictionary mapping node IDs to betweenness centrality scores
-        """
-        if self._betweenness_cache is None:
-            try:
-                self._betweenness_cache = nx.betweenness_centrality(self.graph)
-            except Exception:
-                # Return zeros if calculation fails
-                self._betweenness_cache = {node: 0.0 for node in self.graph.nodes()}
+        Nodes that lie on many shortest paths (between importers and imported) get higher scores.
 
-        return self._betweenness_cache
+        Returns:
+            Dictionary mapping node IDs to betweenness centrality scores (normalized 0-1)
+        """
+        if self._betweenness_cache is not None:
+            return self._betweenness_cache
+
+        nodes = list(self.graph.nodes())
+        if not nodes:
+            self._betweenness_cache = {}
+            return self._betweenness_cache
+
+        try:
+            self._betweenness_cache = nx.betweenness_centrality(
+                self.graph,
+                normalized=True,
+            )
+            return self._betweenness_cache
+        except Exception as e:
+            logger.warning("Betweenness centrality failed, using zeros", error=str(e))
+            self._betweenness_cache = {node: 0.0 for node in nodes}
+            return self._betweenness_cache
 
     def get_hub_modules(self, top_n: int = 5) -> list[tuple[str, float]]:
         """Identify hub modules (high importance/centrality).
@@ -86,34 +120,77 @@ class GraphAnalyzer:
         return sorted_nodes[:top_n]
 
     def get_closeness_centrality(self) -> dict[str, float]:
-        """Closeness centrality: average distance to other nodes (higher = more central).
+        """Closeness centrality: how central a node is as a dependency target.
+
+        Uses reverse graph so that "how quickly can others reach you" = high for
+        heavily imported modules. Original graph gives "how quickly you reach others".
 
         Returns:
-            Dictionary mapping node ID to score (0-1). Empty/zeros on failure.
+            Dictionary mapping node ID to score (0-1). Zeros on failure or unreachable.
         """
         if self._closeness_cache is not None:
             return self._closeness_cache
-        try:
-            self._closeness_cache = nx.closeness_centrality(self.graph)
+
+        nodes = list(self.graph.nodes())
+        if not nodes:
+            self._closeness_cache = {}
             return self._closeness_cache
-        except Exception:
-            self._closeness_cache = {n: 0.0 for n in self.graph.nodes()}
+
+        try:
+            # Reverse graph: high closeness = easily reached from many (heavily imported)
+            rev = self.graph.reverse()
+            self._closeness_cache = nx.closeness_centrality(rev)
+            return self._closeness_cache
+        except Exception as e:
+            logger.warning("Closeness centrality failed, using zeros", error=str(e))
+            self._closeness_cache = {n: 0.0 for n in nodes}
             return self._closeness_cache
 
     def get_eigenvector_centrality(self) -> dict[str, float]:
-        """Eigenvector centrality: influence based on connections to important nodes.
+        """Eigenvector centrality: importance as a dependency target.
+
+        Uses reverse graph so "imported by important modules" = high score.
+        Falls back to in-degree centrality if power iteration does not converge
+        (e.g. disconnected graph).
 
         Returns:
-            Dictionary mapping node ID to score. Empty/zeros on failure.
+            Dictionary mapping node ID to score. Fallback to in-degree normalized on failure.
         """
         if self._eigenvector_cache is not None:
             return self._eigenvector_cache
+
+        nodes = list(self.graph.nodes())
+        if not nodes:
+            self._eigenvector_cache = {}
+            return self._eigenvector_cache
+
+        # Try reverse graph first: high score = imported by important modules
         try:
-            self._eigenvector_cache = nx.eigenvector_centrality(self.graph, max_iter=500)
+            rev = self.graph.reverse()
+            self._eigenvector_cache = nx.eigenvector_centrality(
+                rev,
+                max_iter=1000,
+                tol=1.0e-6,
+            )
             return self._eigenvector_cache
-        except Exception:
-            self._eigenvector_cache = {n: 0.0 for n in self.graph.nodes()}
-            return self._eigenvector_cache
+        except (nx.PowerIterationFailedConvergence, nx.NetworkXError) as e:
+            logger.debug(
+                "Eigenvector centrality did not converge, using in-degree centrality",
+                error=str(e),
+            )
+        except Exception as e:
+            logger.warning(
+                "Eigenvector centrality failed, using in-degree centrality",
+                error=str(e),
+            )
+
+        # Fallback: in-degree centrality (normalized) — "how many modules import you"
+        in_degrees = {n: self.graph.in_degree(n) for n in nodes}
+        max_deg = max(in_degrees.values()) or 1
+        self._eigenvector_cache = {
+            n: in_degrees[n] / max_deg for n in nodes
+        }
+        return self._eigenvector_cache
 
     def get_external_ratio_per_node(self) -> dict[str, float]:
         """For each node, fraction of out-edges that point to external nodes (0-1).
@@ -266,6 +343,30 @@ class GraphAnalyzer:
             external_edges / total_imports if total_imports > 0 else 0.0
         )
 
+        # Enriched: entry points (internal nodes with no incoming edges)
+        entry_points_count = sum(
+            1 for n in internal_nodes if self.graph.in_degree(n) == 0
+        )
+        # Distinct external packages referenced
+        external_node_count = sum(
+            1 for n in self.graph.nodes()
+            if self.graph.nodes[n].get("node_type") == "external"
+        )
+        # Edges between internal modules only
+        internal_edges = sum(
+            1 for u, v in self.graph.edges()
+            if self.graph.nodes[u].get("node_type") != "external"
+            and self.graph.nodes[v].get("node_type") != "external"
+        )
+        # Cycle length stats
+        cycle_lengths = [len(c) for c in circular_deps]
+        avg_cycle_length = (
+            sum(cycle_lengths) / len(cycle_lengths) if cycle_lengths else 0.0
+        )
+        max_cycle_length = max(cycle_lengths) if cycle_lengths else 0
+        # Largest strongly connected component (internal nodes only for "tangled core")
+        largest_scc_size = self._largest_scc_size(internal_nodes)
+
         return GraphMetrics(
             total_files=len(internal_nodes),
             total_imports=total_imports,
@@ -277,6 +378,12 @@ class GraphAnalyzer:
             graph_density=round(graph_density, 4),
             total_cycles=len(circular_deps),
             external_edges_ratio=round(external_edges_ratio, 4),
+            entry_points_count=entry_points_count,
+            external_node_count=external_node_count,
+            internal_edges=internal_edges,
+            avg_cycle_length=round(avg_cycle_length, 1),
+            max_cycle_length=max_cycle_length,
+            largest_scc_size=largest_scc_size,
         )
 
     def _compute_statistics(self, internal_nodes: list[str]):
@@ -288,7 +395,7 @@ class GraphAnalyzer:
         Returns:
             ImportStatistics object
         """
-        from app.api.models import ImportStatistics
+        from app.api.models import ImportStatistics, ModuleCount
 
         if not internal_nodes:
             return ImportStatistics(
@@ -298,6 +405,8 @@ class GraphAnalyzer:
                 most_imported_module="",
                 most_imported_count=0,
                 hub_modules=[],
+                top_importers=[],
+                top_imported=[],
             )
 
         # Calculate average imports per file
@@ -325,6 +434,12 @@ class GraphAnalyzer:
         # Get hub modules
         hub_modules = self.get_hub_modules(5)
 
+        # Top importers (fan-out) and top imported (fan-in)
+        top_importers_raw = self.get_modules_with_most_imports(5)
+        top_imported_raw = self.get_most_imported_modules(5)
+        top_importers = [ModuleCount(module=m, count=c) for m, c in top_importers_raw]
+        top_imported = [ModuleCount(module=m, count=float(c)) for m, c in top_imported_raw]
+
         return ImportStatistics(
             avg_imports_per_file=round(avg_imports, 2),
             max_imports_in_file=max_imports,
@@ -332,7 +447,26 @@ class GraphAnalyzer:
             most_imported_module=most_imported,
             most_imported_count=most_imported_count,
             hub_modules=hub_modules,
+            top_importers=top_importers,
+            top_imported=top_imported,
         )
+
+    def _largest_scc_size(self, internal_nodes: list[str]) -> int:
+        """Size of largest strongly connected component (internal nodes only).
+
+        Indicates how large the 'tangled core' of the dependency graph is.
+
+        Returns:
+            Number of nodes in the largest SCC.
+        """
+        if not internal_nodes:
+            return 0
+        try:
+            subgraph = self.graph.subgraph(internal_nodes)
+            sccs = list(nx.strongly_connected_components(subgraph))
+            return max(len(scc) for scc in sccs) if sccs else 0
+        except Exception:
+            return 0
 
     def _find_circular_dependencies(self) -> list[list[str]]:
         """Find all circular dependencies in the graph.

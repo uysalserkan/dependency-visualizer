@@ -73,6 +73,14 @@ class HubModuleType:
 
 
 @strawberry.type
+class ModuleCountType:
+    """GraphQL type for module + count (top importers/imported)."""
+
+    module: str
+    count: float
+
+
+@strawberry.type
 class StatisticsType:
     """GraphQL type for import statistics."""
 
@@ -82,6 +90,8 @@ class StatisticsType:
     most_imported_module: str
     most_imported_count: int
     hub_modules: List[HubModuleType]
+    top_importers: List[ModuleCountType] = strawberry.field(default_factory=list)
+    top_imported: List[ModuleCountType] = strawberry.field(default_factory=list)
 
 
 @strawberry.type
@@ -98,6 +108,12 @@ class MetricsType:
     graph_density: float = 0.0
     total_cycles: int = 0
     external_edges_ratio: float = 0.0
+    entry_points_count: int = 0
+    external_node_count: int = 0
+    internal_edges: int = 0
+    avg_cycle_length: float = 0.0
+    max_cycle_length: int = 0
+    largest_scc_size: int = 0
 
 
 @strawberry.type
@@ -346,6 +362,14 @@ def _convert_statistics_to_graphql(stats: ImportStatistics) -> StatisticsType:
             HubModuleType(module=mod, score=score)
             for mod, score in stats.hub_modules
         ],
+        top_importers=[
+            ModuleCountType(module=m.module, count=m.count)
+            for m in (stats.top_importers or [])
+        ],
+        top_imported=[
+            ModuleCountType(module=m.module, count=m.count)
+            for m in (stats.top_imported or [])
+        ],
     )
 
 
@@ -375,6 +399,12 @@ def convert_metrics_to_graphql(metrics: GraphMetrics) -> MetricsType:
         graph_density=metrics.graph_density,
         total_cycles=metrics.total_cycles,
         external_edges_ratio=metrics.external_edges_ratio,
+        entry_points_count=getattr(metrics, "entry_points_count", 0),
+        external_node_count=getattr(metrics, "external_node_count", 0),
+        internal_edges=getattr(metrics, "internal_edges", 0),
+        avg_cycle_length=getattr(metrics, "avg_cycle_length", 0.0),
+        max_cycle_length=getattr(metrics, "max_cycle_length", 0),
+        largest_scc_size=getattr(metrics, "largest_scc_size", 0),
     )
 
 
