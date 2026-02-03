@@ -1,22 +1,27 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useGraphStore } from '@/stores/graphStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
-import { SourceAnalyzer } from '@/components/SourceAnalyzer'
-import { ImportGraph } from '@/components/ImportGraph'
-import { CollapsibleSection } from '@/components/CollapsibleSection'
+import { SourceImportModal } from '@/components/SourceImportModal'
 import { GraphVisualization } from '@/components/GraphVisualization'
+import { NodeListView } from '@/components/NodeListView'
 import { ControlPanel } from '@/components/ControlPanel'
 import { MetricsPanel } from '@/components/MetricsPanel'
 import { InsightsPanel } from '@/components/InsightsPanel'
 import { ExportButton } from '@/components/ExportButton'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { ProjectFolderTree } from '@/components/ProjectFolderTree'
-import { Network } from 'lucide-react'
+import { Network, GitBranch, List, FolderPlus } from 'lucide-react'
+
+/** Set to true to re-enable the List view tab. */
+const LIST_VIEW_ENABLED = false
 
 function App() {
   const analysis = useGraphStore((state) => state.analysis)
   const isFullScreen = useGraphStore((state) => state.isFullScreen)
+  const viewMode = useGraphStore((state) => state.viewMode)
+  const setViewMode = useGraphStore((state) => state.setViewMode)
+  const [sourceImportOpen, setSourceImportOpen] = useState(false)
 
   useKeyboardShortcuts()
 
@@ -51,6 +56,15 @@ function App() {
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSourceImportOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  aria-label="Analyze or import"
+                >
+                  <FolderPlus className="w-4 h-4" aria-hidden />
+                  <span className="hidden sm:inline">Analyze / Import</span>
+                </button>
                 {analysis && <ExportButton />}
                 <ThemeToggle />
               </div>
@@ -71,18 +85,20 @@ function App() {
                   Map import relationships across your codebase with interactive visualizations.
                 </p>
               </div>
-              <div className="pt-8 max-w-xl mx-auto">
-                <SourceAnalyzer />
+              <div className="pt-8 max-w-xl mx-auto flex flex-col items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => setSourceImportOpen(true)}
+                  className="inline-flex items-center gap-3 px-8 py-4 rounded-xl text-base font-semibold text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 transition-colors shadow-lg"
+                  aria-label="Open analyze or import"
+                >
+                  <FolderPlus className="w-5 h-5" aria-hidden />
+                  Analyze or import graph
+                </button>
+                <p className="text-sm text-gray-500 dark:text-slate-500 leading-relaxed font-mono-ui">
+                  Supports Python, JavaScript, TypeScript • Export in multiple formats
+                </p>
               </div>
-              <p className="text-sm text-gray-500 dark:text-slate-500 leading-relaxed pt-4 font-mono-ui">
-                Supports Python, JavaScript, TypeScript • Export in multiple formats
-              </p>
-            </section>
-            <section aria-label="Import graph" className="max-w-xl mx-auto">
-              <div className="text-center mb-4">
-                <span className="text-sm text-gray-500 dark:text-slate-500">Or import an existing analysis</span>
-              </div>
-              <ImportGraph />
             </section>
           </div>
         ) : (
@@ -92,24 +108,49 @@ function App() {
             {!isFullScreen && (
               <aside className="xl:col-span-2 space-y-5 overflow-y-auto" aria-label="Analysis controls">
                 <ProjectFolderTree />
-                <CollapsibleSection title="Source" defaultOpen={false}>
-                  <SourceAnalyzer />
-                </CollapsibleSection>
-                <CollapsibleSection title="Import graph" defaultOpen={false}>
-                  <ImportGraph />
-                </CollapsibleSection>
                 <ControlPanel />
               </aside>
             )}
 
             <section
-              className={`transition-all duration-300 ${isFullScreen ? 'h-full w-full' : 'xl:col-span-8 min-h-[500px] xl:min-h-0'}`}
-              aria-label="Dependency graph"
+              className={`transition-all duration-300 flex flex-col gap-2 ${isFullScreen ? 'h-full w-full' : 'xl:col-span-8 min-h-[500px] xl:min-h-0'}`}
+              aria-label="Main view"
             >
+              {!isFullScreen && (
+                <div className="shrink-0 flex rounded-lg border border-gray-200 dark:border-white/5 bg-gray-50/80 dark:bg-slate-800/50 p-1 w-fit" role="tablist" aria-label="View mode">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={viewMode === 'graph'}
+                    onClick={() => setViewMode('graph')}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'graph' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'}`}
+                  >
+                    <GitBranch className="w-4 h-4" aria-hidden />
+                    Graph
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={viewMode === 'list'}
+                    aria-disabled={!LIST_VIEW_ENABLED}
+                    onClick={() => LIST_VIEW_ENABLED && setViewMode('list')}
+                    disabled={!LIST_VIEW_ENABLED}
+                    title={LIST_VIEW_ENABLED ? 'List view' : 'List view (disabled)'}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'} ${!LIST_VIEW_ENABLED ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <List className="w-4 h-4" aria-hidden />
+                    List
+                  </button>
+                </div>
+              )}
               <div
-                className={`rounded-xl border border-gray-200 dark:border-white/5 overflow-hidden h-full relative backdrop-blur-md bg-white/80 dark:bg-slate-900/50 ${isFullScreen ? 'shadow-2xl' : ''}`}
+                className={`flex-1 min-h-0 rounded-xl border border-gray-200 dark:border-white/5 overflow-hidden relative backdrop-blur-md bg-white/80 dark:bg-slate-900/50 ${isFullScreen ? 'shadow-2xl' : ''}`}
               >
-                <GraphVisualization analysis={analysis} />
+                {viewMode === 'graph' || !LIST_VIEW_ENABLED ? (
+                  <GraphVisualization analysis={analysis} />
+                ) : (
+                  <NodeListView />
+                )}
               </div>
             </section>
 
@@ -130,6 +171,8 @@ function App() {
           Import Visualizer — Analyze and visualize project dependencies
         </div>
       </footer>
+
+      <SourceImportModal open={sourceImportOpen} onClose={() => setSourceImportOpen(false)} />
     </div>
   )
 }

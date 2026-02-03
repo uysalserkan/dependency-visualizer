@@ -2,10 +2,58 @@ import { useEffect, useRef, useMemo } from 'react'
 import cytoscape, { type Core, type NodeSingular } from 'cytoscape'
 // @ts-expect-error - cytoscape-cola has no types
 import cola from 'cytoscape-cola'
-import { useGraphStore, type EdgeWidthPreset } from '@/stores/graphStore'
+import {
+  useGraphStore,
+  type EdgeWidthPreset,
+  type LabelFontSize,
+  type NodeBorderWidth,
+  type EdgeOpacityPreset,
+} from '@/stores/graphStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { GraphFloatingControls } from './GraphFloatingControls'
-import type { AnalysisResult } from '@/types/api'
+import type { AnalysisResult, Node, Edge } from '@/types/api'
+import { getRelativePath, isUnderFolder } from '@/lib/pathUtils'
+
+export function filterNodesAndEdgesByFolder(
+  analysis: AnalysisResult,
+  selectedFolderPath: string | null,
+  showStdlibNodes: boolean,
+  showExternalPackages: boolean
+): { nodes: Node[]; edges: Edge[] } {
+  const projectPath = analysis.project_path
+
+  let internalNodes: Node[]
+  if (!selectedFolderPath) {
+    internalNodes = analysis.nodes.filter((n) => n.node_type !== 'external')
+  } else {
+    internalNodes = analysis.nodes.filter((n) => {
+      if (n.node_type === 'external') return false
+      const relative = getRelativePath(n.file_path, projectPath)
+      return isUnderFolder(relative, selectedFolderPath)
+    })
+  }
+
+  const internalIds = new Set(internalNodes.map((n) => n.id))
+  let externalNodes: Node[] = []
+  if (showStdlibNodes || showExternalPackages) {
+    externalNodes = analysis.nodes.filter((n) => {
+      if (n.node_type !== 'external') return false
+      const kind = n.external_kind ?? 'package'
+      if (kind === 'stdlib' && !showStdlibNodes) return false
+      if (kind === 'package' && !showExternalPackages) return false
+      const connected = analysis.edges.some(
+        (e) => (e.source === n.id && internalIds.has(e.target)) || (e.target === n.id && internalIds.has(e.source))
+      )
+      return connected
+    })
+  }
+
+  const nodes = [...internalNodes, ...externalNodes]
+  const nodeIds = new Set(nodes.map((n) => n.id))
+  const edges = analysis.edges.filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target))
+
+  return { nodes, edges }
+}
 
 // Register cola layout
 cytoscape.use(cola)
@@ -27,6 +75,9 @@ function nodeColorForId(id: string): string {
 }
 
 const EDGE_WIDTH_MAP: Record<EdgeWidthPreset, number> = { thin: 1, normal: 2, thick: 3 }
+const LABEL_FONT_SIZE_MAP: Record<LabelFontSize, string> = { small: '10px', medium: '12px', large: '14px' }
+const NODE_BORDER_WIDTH_MAP: Record<NodeBorderWidth, number> = { thin: 1, normal: 2, thick: 3 }
+const EDGE_OPACITY_MAP: Record<EdgeOpacityPreset, number> = { faded: 0.5, normal: 0.7, solid: 1 }
 
 interface GraphVisualizationProps {
   analysis: AnalysisResult
@@ -39,6 +90,7 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
     selectedNode,
     setSelectedNode,
     setCyInstance,
+    selectedFolderPath,
     layoutName,
     showStdlibNodes,
     showExternalPackages,
@@ -48,12 +100,23 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
     nodeSizeMode,
     edgeWidth,
     nodeShape,
+    labelFontSize,
+    nodeBorderWidth,
+    edgeCurveStyle,
+    edgeOpacity,
     layoutAnimation,
     fitRequest,
   } = useGraphStore()
   const isDark = useThemeStore((s) => s.isDark)
 
   const baseEdgeWidth = EDGE_WIDTH_MAP[edgeWidth]
+  const nodeBorderPx = NODE_BORDER_WIDTH_MAP[nodeBorderWidth]
+  const edgeOpacityValue = EDGE_OPACITY_MAP[edgeOpacity]
+
+  const { nodes: filteredNodes, edges: filteredEdges } = useMemo(
+    () => filterNodesAndEdgesByFolder(analysis, selectedFolderPath, showStdlibNodes, showExternalPackages),
+    [analysis, selectedFolderPath, showStdlibNodes, showExternalPackages]
+  )
 
   const styleArray = useMemo(() => [
     {
@@ -75,13 +138,13 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
           const degree = ele.degree()
           return Math.max(30, Math.min(60, 30 + degree * 2))
         },
-        'font-size': '12px',
+        'font-size': LABEL_FONT_SIZE_MAP[labelFontSize],
         'color': isDark ? '#f1f5f9' : '#1e293b',
         'text-valign': 'center',
         'text-halign': 'center',
         'text-wrap': 'wrap' as const,
         'text-max-width': '100px',
-        'border-width': 2,
+        'border-width': nodeBorderPx,
         'border-color': (ele: NodeSingular) => {
           const kind = ele.data('external_kind') as string | undefined
           if (kind === 'stdlib') return isDark ? '#64748b' : '#94a3b8'
@@ -90,7 +153,7 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
         },
       },
     },
-    { selector: 'node:selected', style: { 'border-width': 4, 'border-color': '#a78bfa', 'background-color': '#a78bfa' } },
+    { selector: 'node:selected', style: { 'border-width': nodeBorderPx + 2, 'border-color': '#a78bfa', 'background-color': '#a78bfa' } },
     {
       selector: 'edge',
       style: {
@@ -98,8 +161,8 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
         'line-color': isDark ? '#64748b' : '#cbd5e1',
         'target-arrow-color': isDark ? '#64748b' : '#cbd5e1',
         'target-arrow-shape': 'triangle',
-        'curve-style': 'bezier',
-        'opacity': 0.7,
+        'curve-style': edgeCurveStyle,
+        'opacity': edgeOpacityValue,
       },
     },
     { selector: 'edge:selected', style: { 'line-color': '#8b5cf6', 'target-arrow-color': '#8b5cf6', 'width': baseEdgeWidth + 1, 'opacity': 1 } },
@@ -108,18 +171,13 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
     { selector: '.connected-in', style: { 'line-color': '#10b981', 'target-arrow-color': '#10b981', 'width': baseEdgeWidth + 1, 'opacity': 1 } },
     { selector: '.connected', style: { 'line-color': '#8b5cf6', 'target-arrow-color': '#8b5cf6', 'width': baseEdgeWidth + 1, 'opacity': 1 } },
     { selector: '.dimmed', style: { 'opacity': 0.2 } },
-  ], [showNodeLabels, nodeSizeMode, edgeWidth, nodeShape, isDark, baseEdgeWidth])
+  ], [showNodeLabels, nodeSizeMode, edgeWidth, nodeShape, labelFontSize, nodeBorderWidth, edgeCurveStyle, edgeOpacity, isDark, baseEdgeWidth, nodeBorderPx, edgeOpacityValue])
 
   useEffect(() => {
     if (!containerRef.current) return
 
-    const nodes = analysis.nodes.filter((n) => {
-      if (n.node_type !== 'external') return true
-      const kind = n.external_kind ?? 'package'
-      return (kind === 'stdlib' && showStdlibNodes) || (kind === 'package' && showExternalPackages)
-    })
-    const nodeIds = new Set(nodes.map(n => n.id))
-    const edges = analysis.edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target))
+    const nodes = filteredNodes
+    const edges = filteredEdges
 
     const cy = cytoscape({
       container: containerRef.current,
@@ -184,6 +242,28 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
       incomingEdges.removeClass('dimmed').addClass('connected-in')   // Green for imported-by (who imports this node)
     })
 
+    // Edge click handler: select the target node (the node the edge points to) and apply same highlight
+    cy.on('tap', 'edge', (event) => {
+      const edge = event.target
+      const targetId = edge.data('target')
+      const fullNode = nodeById.get(targetId) ?? null
+      setSelectedNode(fullNode)
+
+      cy.elements().removeClass('highlighted connected connected-in connected-out dimmed')
+      cy.elements().addClass('dimmed')
+
+      const targetNode = cy.getElementById(targetId)
+      const sourceId = edge.data('source')
+      const sourceNode = cy.getElementById(sourceId)
+      targetNode.removeClass('dimmed').addClass('highlighted')
+      sourceNode.removeClass('dimmed')
+      edge.removeClass('dimmed').addClass('connected-out')
+      const outgoingEdges = targetNode.connectedEdges(`[source = "${targetId}"]`)
+      const incomingEdges = targetNode.connectedEdges(`[target = "${targetId}"]`)
+      outgoingEdges.removeClass('dimmed').addClass('connected-out')
+      incomingEdges.removeClass('dimmed').addClass('connected-in')
+    })
+
     // Background click handler
     cy.on('tap', (event) => {
       if (event.target === cy) {
@@ -196,7 +276,7 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
       setCyInstance(null)
       cy.destroy()
     }
-  }, [analysis, layoutName, showStdlibNodes, showExternalPackages, setSelectedNode, setCyInstance])
+  }, [filteredNodes, filteredEdges, layoutName, setSelectedNode, setCyInstance])
 
   // Update style when display options change (no graph recreation)
   useEffect(() => {
@@ -316,6 +396,13 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
         role="img"
         aria-label="Dependency graph visualization"
       />
+      {filteredNodes.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <p className="text-sm text-gray-500 dark:text-slate-400 font-medium">
+            No modules in this folder.
+          </p>
+        </div>
+      )}
       <GraphFloatingControls />
 
       {selectedNode && (

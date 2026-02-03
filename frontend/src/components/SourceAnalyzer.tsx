@@ -6,7 +6,12 @@ import { cn } from '@/lib/utils'
 
 type SourceType = 'local' | 'git'
 
-export function SourceAnalyzer() {
+interface SourceAnalyzerProps {
+  /** Called after a successful analyze (e.g. to close a modal). */
+  onSuccessCallback?: () => void
+}
+
+export function SourceAnalyzer({ onSuccessCallback }: SourceAnalyzerProps = {}) {
   const [sourceType, setSourceType] = useState<SourceType>('local')
   const [projectPath, setProjectPath] = useState('')
   const [repositoryUrl, setRepositoryUrl] = useState('')
@@ -24,7 +29,12 @@ export function SourceAnalyzer() {
       if (!projectPath.trim()) return
       analyzeProject(
         { project_path: projectPath.trim() },
-        { onSuccess: (data) => setAnalysis(data) }
+        {
+          onSuccess: (data) => {
+            setAnalysis(data)
+            onSuccessCallback?.()
+          },
+        }
       )
     } else {
       if (!repositoryUrl.trim()) return
@@ -33,7 +43,12 @@ export function SourceAnalyzer() {
           repository_url: repositoryUrl.trim(),
           branch: branch.trim() || undefined,
         },
-        { onSuccess: (data) => setAnalysis(data) }
+        {
+          onSuccess: (data) => {
+            setAnalysis(data)
+            onSuccessCallback?.()
+          },
+        }
       )
     }
   }

@@ -11,8 +11,20 @@ import {
   Diamond,
   Minus,
   Gauge,
+  AlignLeft,
+  GitBranch,
+  Palette,
 } from 'lucide-react'
-import { useGraphStore, type NodeSizeMode, type EdgeWidthPreset, type NodeShapeType } from '@/stores/graphStore'
+import {
+  useGraphStore,
+  type NodeSizeMode,
+  type EdgeWidthPreset,
+  type NodeShapeType,
+  type LabelFontSize,
+  type NodeBorderWidth,
+  type EdgeCurveStyle,
+  type EdgeOpacityPreset,
+} from '@/stores/graphStore'
 import { cn } from '@/lib/utils'
 
 const nodeSizeOptions: { id: NodeSizeMode; name: string; short: string }[] = [
@@ -31,6 +43,29 @@ const nodeShapeOptions: { id: NodeShapeType; name: string; Icon: ComponentType<{
   { id: 'rectangle', name: 'Rectangle', Icon: Square },
   { id: 'round-rectangle', name: 'Rounded', Icon: Hexagon },
   { id: 'diamond', name: 'Diamond', Icon: Diamond },
+]
+
+const labelFontSizeOptions: { id: LabelFontSize; name: string; short: string }[] = [
+  { id: 'small', name: 'Small', short: 'S' },
+  { id: 'medium', name: 'Medium', short: 'M' },
+  { id: 'large', name: 'Large', short: 'L' },
+]
+
+const nodeBorderWidthOptions: { id: NodeBorderWidth; name: string }[] = [
+  { id: 'thin', name: 'Thin' },
+  { id: 'normal', name: 'Normal' },
+  { id: 'thick', name: 'Thick' },
+]
+
+const edgeCurveStyleOptions: { id: EdgeCurveStyle; name: string }[] = [
+  { id: 'bezier', name: 'Curved' },
+  { id: 'straight', name: 'Straight' },
+]
+
+const edgeOpacityOptions: { id: EdgeOpacityPreset; name: string }[] = [
+  { id: 'faded', name: 'Faded' },
+  { id: 'normal', name: 'Normal' },
+  { id: 'solid', name: 'Solid' },
 ]
 
 function SegmentedControl<T extends string, O extends { id: T }>({
@@ -157,6 +192,14 @@ export function ControlPanel() {
     setEdgeWidth,
     nodeShape,
     setNodeShape,
+    labelFontSize,
+    setLabelFontSize,
+    nodeBorderWidth,
+    setNodeBorderWidth,
+    edgeCurveStyle,
+    setEdgeCurveStyle,
+    edgeOpacity,
+    setEdgeOpacity,
     layoutAnimation,
     setLayoutAnimation,
     requestFit,
@@ -235,6 +278,77 @@ export function ControlPanel() {
                   </>
                 )}
                 ariaLabel="Edge width"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-2">
+                Label font size
+              </label>
+              <SegmentedControl
+                value={labelFontSize}
+                onChange={setLabelFontSize}
+                options={labelFontSizeOptions}
+                optionValue={(o) => o.id}
+                optionLabel={(o) => (
+                  <>
+                    <AlignLeft className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                    <span className="truncate">{o.short}</span>
+                  </>
+                )}
+                ariaLabel="Label font size"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-2">
+                Node border
+              </label>
+              <SegmentedControl
+                value={nodeBorderWidth}
+                onChange={setNodeBorderWidth}
+                options={nodeBorderWidthOptions}
+                optionValue={(o) => o.id}
+                optionLabel={(o) => <span className="truncate">{o.name}</span>}
+                ariaLabel="Node border width"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-2">
+                Edge style
+              </label>
+              <SegmentedControl
+                value={edgeCurveStyle}
+                onChange={setEdgeCurveStyle}
+                options={edgeCurveStyleOptions}
+                optionValue={(o) => o.id}
+                optionLabel={(o) => (
+                  <>
+                    <GitBranch className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                    <span className="truncate">{o.name}</span>
+                  </>
+                )}
+                ariaLabel="Edge curve style"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-2">
+                Edge opacity
+              </label>
+              <SegmentedControl
+                value={edgeOpacity}
+                onChange={setEdgeOpacity}
+                options={edgeOpacityOptions}
+                optionValue={(o) => o.id}
+                optionLabel={(o) => (
+                  <>
+                    <Palette className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                    <span className="truncate">{o.name}</span>
+                  </>
+                )}
+                ariaLabel="Edge opacity"
                 className="w-full"
               />
             </div>

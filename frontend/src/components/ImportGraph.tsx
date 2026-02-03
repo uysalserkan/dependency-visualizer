@@ -6,7 +6,12 @@ import { useGraphStore } from '@/stores/graphStore'
 const ACCEPT = '.json,.graphml,.gexf'
 const MAX_SIZE_MB = 50
 
-export function ImportGraph() {
+interface ImportGraphProps {
+  /** Called after a successful import (e.g. to close a modal). */
+  onSuccessCallback?: () => void
+}
+
+export function ImportGraph({ onSuccessCallback }: ImportGraphProps = {}) {
   const inputRef = useRef<HTMLInputElement>(null)
   const { mutate: importGraph, isPending, error } = useImportGraph()
   const setAnalysis = useGraphStore((state) => state.setAnalysis)
@@ -21,6 +26,7 @@ export function ImportGraph() {
       onSuccess: (data) => {
         setAnalysis(data)
         if (inputRef.current) inputRef.current.value = ''
+        onSuccessCallback?.()
       },
     })
   }
