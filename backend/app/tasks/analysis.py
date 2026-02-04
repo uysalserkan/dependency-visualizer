@@ -14,6 +14,10 @@ from app.core.graph.builder import GraphBuilder
 from app.core.logging import get_logger
 from app.core.parallel_parser import ParallelParser
 from app.core.validation import validate_project_path
+from app.services.analysis_service import (
+    _enrich_nodes_with_blame,
+    _enrich_nodes_with_file_stats,
+)
 
 logger = get_logger(__name__)
 
@@ -157,21 +161,24 @@ def analyze_project_task(
         eigenvector = analyzer.get_eigenvector_centrality()
         external_ratio_map = analyzer.get_external_ratio_per_node()
 
-        # Create result
+        # Create result (enrich nodes with file stats and commit hash like sync analysis)
         from app.api.models import AnalysisResult
 
+        raw_nodes = graph_builder.get_nodes(
+            pagerank,
+            betweenness,
+            cycle_participation=cycle_participation,
+            node_depths=node_depths,
+            closeness_scores=closeness,
+            eigenvector_scores=eigenvector,
+            external_ratio_map=external_ratio_map,
+        )
+        nodes = _enrich_nodes_with_file_stats(path, raw_nodes)
+        nodes = _enrich_nodes_with_blame(path, nodes)
         result = AnalysisResult(
             id=analysis_id,
             project_path=str(path),
-            nodes=graph_builder.get_nodes(
-                pagerank,
-                betweenness,
-                cycle_participation=cycle_participation,
-                node_depths=node_depths,
-                closeness_scores=closeness,
-                eigenvector_scores=eigenvector,
-                external_ratio_map=external_ratio_map,
-            ),
+            nodes=nodes,
             edges=graph_builder.get_edges(),
             metrics=metrics,
             warnings=warnings,

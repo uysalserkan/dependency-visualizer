@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { AlertCircle, Package, FileCode, Layers, TrendingUp, Eye, ArrowDownCircle, ArrowUpCircle, Network, Box, Copy, Check, Zap, ExternalLink, Folder, FileStack } from 'lucide-react'
 import { useGraphStore } from '@/stores/graphStore'
 import { computeFolderMetrics } from '@/lib/folderMetrics'
+import { api } from '@/lib/api'
+import type { FileBlameResponse } from '@/types/api'
 import { FilePreviewModal } from './FilePreviewModal'
 import { ExternalPackagesModal } from './ExternalPackagesModal'
 import { ImportRelationsModal } from './ImportRelationsModal'
@@ -47,6 +49,10 @@ function getImpactText(node: Node): string | null {
   return null
 }
 
+function isLocalProjectPath(projectPath: string): boolean {
+  return !projectPath.startsWith('http://') && !projectPath.startsWith('https://')
+}
+
 /** Folder metrics panel: show only the folder name (last segment), not full path. */
 function folderDisplayName(path: string | null): string {
   if (!path) return ''
@@ -84,6 +90,40 @@ export function MetricsPanel() {
   const [showIncomingModal, setShowIncomingModal] = useState(false)
   const [showEntryPoints, setShowEntryPoints] = useState(false)
   const [pathCopied, setPathCopied] = useState(false)
+  const [nodeBlame, setNodeBlame] = useState<FileBlameResponse | null>(null)
+  const [nodeBlameError, setNodeBlameError] = useState<string | null>(null)
+
+  const blameAvailable = analysis && isLocalProjectPath(analysis.project_path)
+
+  useEffect(() => {
+    if (!selectedNode || selectedNode.node_type === 'external' || !analysis) {
+      setNodeBlame(null)
+      setNodeBlameError(null)
+      return
+    }
+    if (selectedNode.commit_hash != null) {
+      setNodeBlame(null)
+      setNodeBlameError(null)
+      return
+    }
+    if (!blameAvailable) {
+      setNodeBlame(null)
+      setNodeBlameError(null)
+      return
+    }
+    const filePath = selectedNode.file_path
+    if (!filePath) {
+      setNodeBlame(null)
+      setNodeBlameError(null)
+      return
+    }
+    setNodeBlame(null)
+    setNodeBlameError(null)
+    api
+      .getBlame(analysis.id, filePath)
+      .then(setNodeBlame)
+      .catch((err: Error) => setNodeBlameError(err.message ?? 'Could not load blame'))
+  }, [analysis, selectedNode?.id, selectedNode?.file_path, selectedNode?.node_type, selectedNode?.commit_hash, blameAvailable])
 
   const folderMetrics = useMemo(
     () =>
@@ -414,6 +454,24 @@ export function MetricsPanel() {
                     <div className="text-xs text-gray-600 dark:text-gray-400 break-all font-mono leading-snug bg-gray-100 dark:bg-white/5 rounded-lg px-3 py-2 border border-gray-200 dark:border-white/10 overflow-hidden min-w-0">
                       {selectedNode.file_path}
                     </div>
+                    {selectedNode.node_type !== 'external' && (
+                      <div className="space-y-1">
+                        <span className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Commit</span>
+                        <div className="text-xs text-gray-600 dark:text-gray-400 font-mono leading-snug bg-gray-100 dark:bg-white/5 rounded-lg px-3 py-2 border border-gray-200 dark:border-white/10 min-w-0">
+                          {(selectedNode.commit_hash ?? nodeBlame?.commit_hash) != null ? (
+                            <span title={selectedNode.commit_hash ?? nodeBlame?.commit_hash ?? ''}>
+                              {(selectedNode.commit_hash ?? nodeBlame?.commit_hash ?? '').slice(0, 7)}
+                            </span>
+                          ) : nodeBlameError ? (
+                            <span className="text-amber-600 dark:text-amber-400">—</span>
+                          ) : blameAvailable ? (
+                            <span className="text-gray-400 dark:text-slate-500">Loading…</span>
+                          ) : (
+                            <span className="text-gray-400 dark:text-slate-500">—</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )

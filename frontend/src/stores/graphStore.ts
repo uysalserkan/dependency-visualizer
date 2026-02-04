@@ -6,7 +6,7 @@ export type EdgeWidthPreset = 'thin' | 'normal' | 'thick'
 export type NodeShapeType = 'ellipse' | 'rectangle' | 'round-rectangle' | 'diamond'
 export type LabelFontSize = 'small' | 'medium' | 'large'
 export type NodeBorderWidth = 'thin' | 'normal' | 'thick'
-export type EdgeCurveStyle = 'bezier' | 'unbundled-bezier' | 'straight'
+export type EdgeCurveStyle = 'bezier' | 'unbundled-bezier' | 'straight' | 'bundled'
 export type EdgeOpacityPreset = 'faded' | 'normal' | 'solid'
 export type ViewMode = 'graph' | 'list'
 export type HeatmapMode =
@@ -47,6 +47,8 @@ interface GraphState {
   flowWrapperRef: HTMLElement | null
   /** Heatmap: color nodes by refactor hotspot metric (off = default node colors). */
   heatmapMode: HeatmapMode
+  /** Folder paths that are collapsed in the graph (shown as one cluster node). */
+  collapsedFolders: string[]
 
   setAnalysis: (analysis: AnalysisResult | null) => void
   setFlowWrapperRef: (el: HTMLElement | null) => void
@@ -70,6 +72,9 @@ interface GraphState {
   requestFit: () => void
   setGraphBackground: (bg: 'dots' | 'grid') => void
   setHeatmapMode: (mode: HeatmapMode) => void
+  setCollapsedFolder: (folderPath: string, collapsed: boolean) => void
+  /** Set all folder paths collapsed in graph at once; pass [] to expand all. */
+  setCollapsedFolders: (paths: string[]) => void
 }
 
 export const useGraphStore = create<GraphState>((set) => ({
@@ -95,6 +100,7 @@ export const useGraphStore = create<GraphState>((set) => ({
   graphBackground: 'dots',
   flowWrapperRef: null,
   heatmapMode: 'off',
+  collapsedFolders: [],
 
   setAnalysis: (analysis) => set({ analysis, selectedNode: null, selectedFolderPath: null }),
   setFlowWrapperRef: (el) => set({ flowWrapperRef: el }),
@@ -118,4 +124,12 @@ export const useGraphStore = create<GraphState>((set) => ({
   requestFit: () => set((state) => ({ fitRequest: state.fitRequest + 1 })),
   setGraphBackground: (bg) => set({ graphBackground: bg }),
   setHeatmapMode: (mode) => set({ heatmapMode: mode }),
+  setCollapsedFolder: (folderPath, collapsed) =>
+    set((state) => {
+      const set = new Set(state.collapsedFolders)
+      if (collapsed) set.add(folderPath)
+      else set.delete(folderPath)
+      return { collapsedFolders: [...set] }
+    }),
+  setCollapsedFolders: (paths) => set({ collapsedFolders: paths }),
 }))

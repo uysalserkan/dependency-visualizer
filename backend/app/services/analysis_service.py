@@ -13,6 +13,7 @@ from app.config import settings
 from app.core.cache import CacheDB
 from app.core.discovery import FileDiscovery
 from app.core.exceptions import AnalysisError, NotFoundError, ValidationError
+from app.core.git_blame import get_file_blame as get_blame
 from app.core.graph.analyzer import GraphAnalyzer
 from app.core.graph.builder import GraphBuilder
 from app.core.import_graph import parse_imported_graph
@@ -128,6 +129,54 @@ def _enrich_nodes_with_file_stats(project_path: Path, nodes: list[Node]) -> list
                 )
             )
         except (ValueError, OSError):
+            enriched.append(node)
+    return enriched
+
+
+def _enrich_nodes_with_blame(project_path: Path, nodes: list[Node]) -> list[Node]:
+    """Enrich internal nodes with latest commit hash (git blame) at analysis time.
+
+    Runs git blame in parallel to avoid long analysis times (e.g. 43 files
+    x 2s each = ~90s sequential; parallelized to a few seconds).
+    External nodes are left unchanged.
+    """
+    project_resolved = Path(project_path).resolve()
+    # Index -> (node, resolved_path) for internal nodes that need blame
+    work: list[tuple[int, Node, Path]] = []
+    for i, node in enumerate(nodes):
+        if node.node_type == "external":
+            continue
+        try:
+            path = Path(node.file_path)
+            resolved = (
+                (project_resolved / path).resolve()
+                if not path.is_absolute()
+                else path.resolve()
+            )
+            if resolved.is_relative_to(project_resolved):
+                work.append((i, node, resolved))
+        except (ValueError, OSError, TypeError):
+            pass
+    if not work:
+        return list(nodes)
+    # Run blame in parallel (I/O-bound; threads are fine)
+    commit_by_index: dict[int, str] = {}
+    max_workers = min(16, len(work))
+    with ThreadPoolExecutor(max_workers=max(1, max_workers)) as pool:
+        def do_blame(item: tuple[int, Node, Path]) -> tuple[int, str | None]:
+            idx, _node, res = item
+            blame = get_blame(project_resolved, res)
+            return (idx, blame.get("commit_hash") if blame else None)
+
+        for idx, commit_hash in pool.map(do_blame, work):
+            if commit_hash:
+                commit_by_index[idx] = commit_hash
+    # Build enriched list preserving order
+    enriched: list[Node] = []
+    for i, node in enumerate(nodes):
+        if i in commit_by_index:
+            enriched.append(node.model_copy(update={"commit_hash": commit_by_index[i]}))
+        else:
             enriched.append(node)
     return enriched
 
@@ -293,6 +342,7 @@ class AnalysisService:
                             external_ratio_map=external_ratio_map,
                         )
                         nodes = _enrich_nodes_with_file_stats(path, raw_nodes)
+                        nodes = _enrich_nodes_with_blame(path, nodes)
                         result = AnalysisResult(
                             id=analysis_id,
                             project_path=str(path),
@@ -573,6 +623,7 @@ class AnalysisService:
             external_ratio_map=external_ratio_map,
         )
         nodes = _enrich_nodes_with_file_stats(Path(project_path), raw_nodes)
+        nodes = _enrich_nodes_with_blame(Path(project_path), nodes)
         edges = builder.get_edges()
 
         analysis_id = str(uuid.uuid4())

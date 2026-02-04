@@ -1,5 +1,5 @@
-import { Search, Layout, Maximize2, Minimize2, Grid3X3, CircleDot } from 'lucide-react'
-import { useGraphStore } from '@/stores/graphStore'
+import { Search, Layout, Flame, Focus, Maximize2, Minimize2 } from 'lucide-react'
+import { useGraphStore, type HeatmapMode } from '@/stores/graphStore'
 
 const layouts = [
   { id: 'cola', name: 'Cola' },
@@ -11,8 +11,26 @@ const layouts = [
   { id: 'concentric', name: 'Concentric' },
 ]
 
+const heatmapModeOptions: { id: HeatmapMode; name: string }[] = [
+  { id: 'off', name: 'Off' },
+  { id: 'god_fanout', name: 'God Objects (fan-out)' },
+  { id: 'god_fanin', name: 'God Objects (fan-in)' },
+  { id: 'impact_pagerank', name: 'Impact (PageRank)' },
+  { id: 'impact_betweenness', name: 'Impact (Betweenness)' },
+]
+
 export function GraphFloatingControls() {
-  const { searchQuery, setSearchQuery, layoutName, setLayoutName, isFullScreen, toggleFullScreen, graphBackground, setGraphBackground } = useGraphStore()
+  const {
+    searchQuery,
+    setSearchQuery,
+    layoutName,
+    setLayoutName,
+    heatmapMode,
+    setHeatmapMode,
+    isFullScreen,
+    toggleFullScreen,
+    requestFit,
+  } = useGraphStore()
 
   return (
     <div
@@ -49,27 +67,31 @@ export function GraphFloatingControls() {
         </select>
       </div>
       <div className="h-6 w-px bg-gray-200 dark:bg-white/10" aria-hidden />
-      <div className="flex items-center gap-1.5" role="group" aria-label="Graph background">
-        <button
-          type="button"
-          onClick={() => setGraphBackground('dots')}
-          className={`p-2 rounded-xl border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900 ${graphBackground === 'dots' ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'border-gray-200 dark:border-white/10 bg-gray-100/80 dark:bg-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 text-gray-600 dark:text-slate-400'}`}
-          aria-pressed={graphBackground === 'dots'}
-          title="Dots background"
+      <div className="flex items-center gap-2">
+        <Flame className="w-4 h-4 text-gray-500 dark:text-slate-400 shrink-0" aria-hidden />
+        <select
+          value={heatmapMode}
+          onChange={(e) => setHeatmapMode(e.target.value as HeatmapMode)}
+          aria-label="Refactor hotspots (heatmap)"
+          className="bg-transparent border-0 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-0 cursor-pointer font-mono-ui pr-1"
         >
-          <CircleDot className="w-4 h-4" aria-hidden />
-        </button>
-        <button
-          type="button"
-          onClick={() => setGraphBackground('grid')}
-          className={`p-2 rounded-xl border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900 ${graphBackground === 'grid' ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'border-gray-200 dark:border-white/10 bg-gray-100/80 dark:bg-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 text-gray-600 dark:text-slate-400'}`}
-          aria-pressed={graphBackground === 'grid'}
-          title="Blueprint grid background"
-        >
-          <Grid3X3 className="w-4 h-4" aria-hidden />
-        </button>
+          {heatmapModeOptions.map((o) => (
+            <option key={o.id} value={o.id} className="bg-white dark:bg-slate-900 text-gray-900 dark:text-white">
+              {o.name}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="h-6 w-px bg-gray-200 dark:bg-white/10" aria-hidden />
+      <button
+        type="button"
+        onClick={requestFit}
+        className="p-2 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-100/80 dark:bg-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 transition-colors"
+        aria-label="Fit graph to view"
+        title="Fit to view"
+      >
+        <Focus className="w-4 h-4 text-gray-600 dark:text-slate-400" aria-hidden />
+      </button>
       <button
         type="button"
         onClick={toggleFullScreen}

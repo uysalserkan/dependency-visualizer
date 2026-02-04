@@ -2,6 +2,7 @@ import type {
   AnalysisResult,
   AnalyzeRequest,
   AnalyzeRepositoryRequest,
+  FileBlameResponse,
   FilePreview,
   InsightsResponse,
 } from '@/types/api'
@@ -78,6 +79,19 @@ export const api = {
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
       throw new Error(error.detail || 'Failed to fetch file preview')
+    }
+
+    return response.json()
+  },
+
+  async getBlame(analysisId: string, filePath: string): Promise<FileBlameResponse> {
+    const response = await fetch(
+      `${API_BASE_URL}/analysis/${analysisId}/blame?file_path=${encodeURIComponent(filePath)}`
+    )
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
+      throw new Error(typeof error.detail === 'string' ? error.detail : error.detail?.message ?? 'Failed to fetch blame')
     }
 
     return response.json()

@@ -8,6 +8,7 @@ import {
 } from '@xyflow/react'
 import { useGraphStore } from '@/stores/graphStore'
 import { useThemeStore } from '@/stores/themeStore'
+import { useEdgeBundling } from '@/contexts/EdgeBundlingContext'
 
 export interface DirectionEdgeData extends Record<string, unknown> {
   edgeType?: 'in' | 'out'
@@ -22,20 +23,27 @@ function DirectionEdgeComponent(props: EdgeProps) {
   const { id, sourceX, sourceY, targetX, targetY, data } = props
   const isDark = useThemeStore((s) => s.isDark)
   const { edgeCurveStyle, edgeWidth, edgeOpacity } = useGraphStore()
+  const { bundledPaths } = useEdgeBundling()
 
   const edgeData = (data ?? {}) as DirectionEdgeData
   const edgeType = edgeData.edgeType
   const dimmed = edgeData.dimmed
   const hovered = edgeData.hovered
 
-  const curveStyle = edgeCurveStyle === 'unbundled-bezier' ? 'bezier' : edgeCurveStyle
-  const pathFn =
-    curveStyle === 'straight'
-      ? getStraightPath
-      : curveStyle === 'bezier'
-        ? getBezierPath
-        : getSmoothStepPath
-  const [path] = pathFn({ sourceX, sourceY, targetX, targetY })
+  const bundledPath = edgeCurveStyle === 'bundled' ? bundledPaths?.get(id) : undefined
+  const useBundled = Boolean(bundledPath)
+  const defaultPath = (() => {
+    const curveStyle = edgeCurveStyle === 'unbundled-bezier' ? 'bezier' : edgeCurveStyle === 'bundled' ? 'bezier' : edgeCurveStyle
+    const pathFn =
+      curveStyle === 'straight'
+        ? getStraightPath
+        : curveStyle === 'bezier'
+          ? getBezierPath
+          : getSmoothStepPath
+    const [p] = pathFn({ sourceX, sourceY, targetX, targetY })
+    return p
+  })()
+  const path = useBundled ? bundledPath! : defaultPath
 
   const width = EDGE_WIDTH_MAP[edgeWidth]
   const opacity = dimmed ? 0.2 : hovered ? 1 : EDGE_OPACITY_MAP[edgeOpacity]

@@ -10,6 +10,7 @@ from app.api.models import (
     AnalyzeRepositoryRequest,
     AnalysisResult,
     AnalysisResultResponse,
+    FileBlameResponse,
     FilePreview,
     InsightItem,
     InsightsResponse,
@@ -289,6 +290,63 @@ async def get_file_preview(
     except Exception as e:
         logger.exception("File preview failed")
         raise HTTPException(status_code=500, detail="Failed to preview file")
+
+
+@router.get("/analysis/{analysis_id}/blame", response_model=FileBlameResponse)
+async def get_file_blame(
+    analysis_id: str,
+    file_path: str = Query(..., description="Path to file within project"),
+    service: AnalysisService = Depends(get_analysis_service),
+):
+    """Get latest commit (blame) info for a file.
+
+    Only available for local analyses (project_path on disk).
+    For repository analyses, returns 404.
+
+    Args:
+        analysis_id: ID of the analysis
+        file_path: Path to file within project (absolute or relative)
+        service: Injected analysis service
+
+    Returns:
+        Latest commit: hash, subject, author_name, author_email, date
+    """
+    from pathlib import Path
+
+    from app.core.git_blame import get_file_blame as get_blame
+    from app.core.validation import sanitize_file_path
+
+    try:
+        analysis = service.get_analysis(analysis_id)
+
+        if analysis.project_path.startswith(("http://", "https://")):
+            raise HTTPException(
+                status_code=404,
+                detail="Blame is not available for repository analyses.",
+            )
+
+        project_path = Path(analysis.project_path)
+        resolved_path = sanitize_file_path(file_path, project_path)
+        blame = get_blame(project_path, resolved_path)
+
+        if blame is None:
+            raise HTTPException(
+                status_code=404,
+                detail="File not in git history or not a git repository",
+            )
+
+        return FileBlameResponse(**blame)
+
+    except HTTPException:
+        raise
+    except SecurityError as e:
+        logger.warning("Security violation in blame", error=str(e))
+        raise HTTPException(status_code=403, detail=str(e))
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.exception("Blame failed")
+        raise HTTPException(status_code=500, detail="Failed to get blame")
 
 
 @router.get("/analysis/{analysis_id}/export")

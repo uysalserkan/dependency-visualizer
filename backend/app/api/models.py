@@ -105,6 +105,8 @@ class Node(BaseModel):
     # File stats (internal modules only; None for external or when unavailable)
     size_bytes: int | None = Field(default=None, description="File size in bytes (internal nodes only)")
     line_count: int | None = Field(default=None, description="Number of lines (internal nodes only; None if file too large)")
+    # Git blame: latest commit hash (internal nodes only; set at analysis time so commit shows for all nodes including repo analyses)
+    commit_hash: str | None = Field(default=None, description="Latest commit hash for this file (internal nodes only)")
 
 
 class Edge(BaseModel):
@@ -187,6 +189,16 @@ class FilePreview(BaseModel):
     line_count: int = Field(..., description="Total number of lines")
     size_bytes: int = Field(..., description="File size in bytes")
     imports: list[ImportInfo] = Field(default_factory=list, description="Imports in this file")
+
+
+class FileBlameResponse(BaseModel):
+    """Latest commit (blame) info for a file."""
+
+    commit_hash: str = Field(..., description="Full commit hash")
+    subject: str = Field(..., description="Commit message subject")
+    author_name: str = Field(..., description="Author name")
+    author_email: str = Field(..., description="Author email")
+    date: str = Field(..., description="Author date (ISO-like string from git)")
 
 
 class AnalysisResult(BaseModel):

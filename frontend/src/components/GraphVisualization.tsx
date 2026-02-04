@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Background,
   MarkerType,
@@ -16,11 +16,22 @@ import { useGraphStore } from '@/stores/graphStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { GraphFloatingControls } from './GraphFloatingControls'
 import { ModuleNode } from './nodes/ModuleNode'
+import { Settings } from 'lucide-react'
 import { DirectionEdge } from './edges/DirectionEdge'
-import type { AnalysisResult, Node as ApiNode, Edge as ApiEdge } from '@/types/api'
+import type { AnalysisResult, Node as ApiNode, Edge as ApiEdge, FileBlameResponse } from '@/types/api'
 import { getRelativePath, isUnderFolder } from '@/lib/pathUtils'
 import { getLayoutedNodes, type LayoutName } from '@/lib/graphLayout'
 import { metricForMode, heatFromMetric } from '@/lib/graphNodeUtils'
+import { api } from '@/lib/api'
+import { computeBundledPaths } from '@/lib/edgeBundling'
+import { EdgeBundlingContext } from '@/contexts/EdgeBundlingContext'
+import {
+  getEffectiveNodesAndEdges,
+  getFolderPath,
+  isClusterNode,
+  CLUSTER_ID_PREFIX,
+} from '@/lib/folderGroups'
+import { ClusterNode } from './nodes/ClusterNode'
 
 export function filterNodesAndEdgesByFolder(
   analysis: AnalysisResult,
@@ -66,23 +77,41 @@ export function filterNodesAndEdgesByFolder(
   return { nodes, edges }
 }
 
-const nodeTypes = { module: ModuleNode }
+const nodeTypes = { module: ModuleNode, cluster: ClusterNode }
 const edgeTypes = { direction: DirectionEdge }
 
 interface GraphVisualizationProps {
   analysis: AnalysisResult
+  onOpenSettings?: () => void
+}
+
+function isLocalProjectPath(projectPath: string): boolean {
+  return !projectPath.startsWith('http://') && !projectPath.startsWith('https://')
 }
 
 function GraphFlow({
+  analysis,
   filteredNodes,
   filteredEdges,
+  effectiveNodes,
+  effectiveEdges,
+  onOpenSettings,
 }: {
+  analysis: AnalysisResult
   filteredNodes: ApiNode[]
   filteredEdges: ApiEdge[]
+  effectiveNodes: import('@/lib/folderGroups').EffectiveNode[]
+  effectiveEdges: import('@/lib/folderGroups').EffectiveEdge[]
+  onOpenSettings?: () => void
 }) {
   const nodeById = useMemo(
-    () => new Map(filteredNodes.map((n) => [n.id, n])),
-    [filteredNodes]
+    () =>
+      new Map(
+        effectiveNodes
+          .filter((n): n is ApiNode => !isClusterNode(n))
+          .map((n) => [n.id, n])
+      ),
+    [effectiveNodes]
   )
   const {
     setSelectedNode,
@@ -94,11 +123,28 @@ function GraphFlow({
     nodeSizeMode,
     nodeShape,
     heatmapMode,
+    edgeCurveStyle,
+    collapsedFolders,
   } = useGraphStore()
 
-  /** Mirrors ModuleNode size formula so layout spacing matches rendered node dimensions. */
+  const blameAvailable = isLocalProjectPath(analysis.project_path)
+  const [hoveredBlameNode, setHoveredBlameNode] = useState<{
+    nodeId: string
+    filePath: string
+    x: number
+    y: number
+  } | null>(null)
+  const [blameData, setBlameData] = useState<FileBlameResponse | null>(null)
+  const [blameError, setBlameError] = useState<string | null>(null)
+  const blameDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hoveredBlameKeyRef = useRef<{ nodeId: string; filePath: string } | null>(null)
+
+  /** Mirrors ModuleNode size formula; cluster nodes use fixed size. */
   const getNodeSize = useCallback(
     (node: Node): { width: number; height: number } => {
+      if (node.type === 'cluster' || node.id.startsWith(CLUSTER_ID_PREFIX)) {
+        return { width: 140, height: 44 }
+      }
       const degree = (node.data?.degree as number) ?? 0
       const size =
         nodeSizeMode === 'fixed' ? 40 : Math.max(30, Math.min(60, 30 + degree * 2))
@@ -113,13 +159,13 @@ function GraphFlow({
 
   const degreeByNodeId = useMemo(() => {
     const m = new Map<string, number>()
-    filteredNodes.forEach((n) => m.set(n.id, 0))
-    filteredEdges.forEach((e) => {
+    effectiveNodes.forEach((n) => m.set(n.id, 0))
+    effectiveEdges.forEach((e) => {
       m.set(e.source, (m.get(e.source) ?? 0) + 1)
       m.set(e.target, (m.get(e.target) ?? 0) + 1)
     })
     return m
-  }, [filteredNodes, filteredEdges])
+  }, [effectiveNodes, effectiveEdges])
 
   const heatByNodeId = useMemo(() => {
     const metric = metricForMode(heatmapMode)
@@ -127,64 +173,112 @@ function GraphFlow({
     return heatFromMetric(filteredNodes, metric)
   }, [filteredNodes, heatmapMode])
 
+  const effectiveLayoutEdges = useMemo(
+    () => effectiveEdges.map((e) => ({ source: e.source, target: e.target })),
+    [effectiveEdges]
+  )
+
   const initialNodes = useMemo(() => {
-    const rfNodes: Node[] = filteredNodes.map((n) => ({
-      id: n.id,
-      position: { x: 0, y: 0 },
-      data: {
-        label: n.label,
-        file_path: n.file_path,
-        node_type: n.node_type,
-        external_kind: n.external_kind,
-        degree: degreeByNodeId.get(n.id) ?? 0,
-        ...(heatByNodeId ? { heat: heatByNodeId.get(n.id) ?? undefined } : {}),
-      },
-      type: 'module',
-    }))
-    return getLayoutedNodes(rfNodes, filteredEdges, layoutName as LayoutName, getNodeSize)
-  }, [filteredNodes, filteredEdges, layoutName, degreeByNodeId, getNodeSize, heatByNodeId])
+    const rfNodes: Node[] = effectiveNodes.map((n) => {
+      if (isClusterNode(n)) {
+        return {
+          id: n.id,
+          position: { x: 0, y: 0 },
+          data: { folderPath: n.folderPath, label: n.label, nodeCount: n.nodeCount },
+          type: 'cluster' as const,
+        }
+      }
+      return {
+        id: n.id,
+        position: { x: 0, y: 0 },
+        data: {
+          label: n.label,
+          file_path: n.file_path,
+          node_type: n.node_type,
+          external_kind: n.external_kind,
+          degree: degreeByNodeId.get(n.id) ?? 0,
+          ...(n.commit_hash != null ? { commit_hash: n.commit_hash } : {}),
+          ...(heatByNodeId ? { heat: heatByNodeId.get(n.id) ?? undefined } : {}),
+        },
+        type: 'module' as const,
+      }
+    })
+    return getLayoutedNodes(rfNodes, effectiveLayoutEdges, layoutName as LayoutName, getNodeSize)
+  }, [effectiveNodes, layoutName, degreeByNodeId, getNodeSize, heatByNodeId, effectiveLayoutEdges])
 
   const initialEdges = useMemo((): Edge[] => {
-    return filteredEdges.map((e) => ({
+    return effectiveEdges.map((e) => ({
       id: `${e.source}-${e.target}`,
       source: e.source,
       target: e.target,
       type: 'direction',
-      data: {},
+      data: e.count != null && e.count > 1 ? { count: e.count } : {},
       markerEnd: { type: MarkerType.ArrowClosed },
     }))
-  }, [filteredEdges])
+  }, [effectiveEdges])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
 
   useEffect(() => {
-    const rfNodes: Node[] = filteredNodes.map((n) => ({
-      id: n.id,
-      position: { x: 0, y: 0 },
-      data: {
-        label: n.label,
-        file_path: n.file_path,
-        node_type: n.node_type,
-        external_kind: n.external_kind,
-        degree: degreeByNodeId.get(n.id) ?? 0,
-        ...(heatByNodeId ? { heat: heatByNodeId.get(n.id) ?? undefined } : {}),
-      },
-      type: 'module',
-    }))
-    const layouted = getLayoutedNodes(rfNodes, filteredEdges, layoutName as LayoutName, getNodeSize)
+    const rfNodes: Node[] = effectiveNodes.map((n) => {
+      if (isClusterNode(n)) {
+        return {
+          id: n.id,
+          position: { x: 0, y: 0 },
+          data: { folderPath: n.folderPath, label: n.label, nodeCount: n.nodeCount },
+          type: 'cluster' as const,
+        }
+      }
+      return {
+        id: n.id,
+        position: { x: 0, y: 0 },
+        data: {
+          label: n.label,
+          file_path: n.file_path,
+          node_type: n.node_type,
+          external_kind: n.external_kind,
+          degree: degreeByNodeId.get(n.id) ?? 0,
+          ...(n.commit_hash != null ? { commit_hash: n.commit_hash } : {}),
+          ...(heatByNodeId ? { heat: heatByNodeId.get(n.id) ?? undefined } : {}),
+        },
+        type: 'module' as const,
+      }
+    })
+    const layouted = getLayoutedNodes(rfNodes, effectiveLayoutEdges, layoutName as LayoutName, getNodeSize)
     setNodes(layouted)
     setEdges(
-      filteredEdges.map((e) => ({
+      effectiveEdges.map((e) => ({
         id: `${e.source}-${e.target}`,
         source: e.source,
         target: e.target,
         type: 'direction',
-        data: {},
+        data: e.count != null && e.count > 1 ? { count: e.count } : {},
         markerEnd: { type: MarkerType.ArrowClosed },
       }))
     )
-  }, [filteredNodes, filteredEdges, layoutName, degreeByNodeId, getNodeSize, heatByNodeId, setNodes, setEdges])
+  }, [effectiveNodes, effectiveEdges, effectiveLayoutEdges, layoutName, degreeByNodeId, getNodeSize, heatByNodeId, setNodes, setEdges])
+
+  const bundledPaths = useMemo(() => {
+    if (edgeCurveStyle !== 'bundled') return null
+    const segments = edges
+      .map((e) => {
+        const sn = nodes.find((n) => n.id === e.source)
+        const tn = nodes.find((n) => n.id === e.target)
+        if (!sn || !tn) return null
+        const { width: sw, height: sh } = getNodeSize(sn)
+        const { width: tw, height: th } = getNodeSize(tn)
+        return {
+          id: e.id,
+          sourceX: sn.position.x + sw / 2,
+          sourceY: sn.position.y + sh / 2,
+          targetX: tn.position.x + tw / 2,
+          targetY: tn.position.y + th / 2,
+        }
+      })
+      .filter((s): s is NonNullable<typeof s> => s != null)
+    return computeBundledPaths(segments)
+  }, [edgeCurveStyle, nodes, edges, getNodeSize])
 
   const applyHighlight = useCallback(
     (nodeId: string) => {
@@ -195,6 +289,16 @@ function GraphFlow({
           connectedIds.add(e.target)
         }
       })
+      const apiNode = nodeById.get(nodeId)
+      const clusterIdForSelected =
+        apiNode != null
+          ? `${CLUSTER_ID_PREFIX}${getFolderPath(getRelativePath(apiNode.file_path, analysis.project_path))}`
+          : null
+      const isEdgeConnected = (source: string, target: string) =>
+        connectedIds.has(source) ||
+        connectedIds.has(target) ||
+        (clusterIdForSelected != null &&
+          (source === clusterIdForSelected || target === clusterIdForSelected))
       setNodes((nodes) =>
         nodes.map((n) => ({
           ...n,
@@ -212,12 +316,12 @@ function GraphFlow({
           data: {
             edgeType:
               e.source === nodeId ? ('out' as const) : e.target === nodeId ? ('in' as const) : undefined,
-            dimmed: !(connectedIds.has(e.source) && connectedIds.has(e.target)),
+            dimmed: !isEdgeConnected(e.source, e.target),
           },
         }))
       )
     },
-    [filteredEdges, setNodes, setEdges]
+    [analysis.project_path, filteredEdges, nodeById, setNodes, setEdges]
   )
 
   const clearHighlight = useCallback(() => {
@@ -237,10 +341,15 @@ function GraphFlow({
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
+      if (node.type === 'cluster') {
+        setSelectedNode(null)
+        clearHighlight()
+        return
+      }
       setSelectedNode(nodeById.get(node.id) ?? null)
       applyHighlight(node.id)
     },
-    [setSelectedNode, nodeById, applyHighlight]
+    [setSelectedNode, nodeById, applyHighlight, clearHighlight]
   )
 
   const onEdgeClick = useCallback(
@@ -318,18 +427,21 @@ function GraphFlow({
       return
     }
     applyHighlight(selectedNode.id)
+    const folderPath = getFolderPath(getRelativePath(selectedNode.file_path, analysis.project_path))
+    const focusNodeId =
+      collapsedFolders.includes(folderPath) ? `${CLUSTER_ID_PREFIX}${folderPath}` : selectedNode.id
     setTimeout(() => {
       fitView({
-        nodes: [{ id: selectedNode.id }],
+        nodes: [{ id: focusNodeId }],
         padding: 0.3,
         duration: 500,
         maxZoom: 1.5,
       })
     }, 0)
-  }, [selectedNode?.id, applyHighlight, clearHighlight, fitView])
+  }, [selectedNode?.id, selectedNode?.file_path, analysis.project_path, collapsedFolders, applyHighlight, clearHighlight, fitView])
 
   const onNodeMouseEnter = useCallback(
-    (_: React.MouseEvent, node: Node) => {
+    (ev: React.MouseEvent, node: Node) => {
       setNodes((nodes) =>
         nodes.map((n) => ({
           ...n,
@@ -356,8 +468,45 @@ function GraphFlow({
           },
         }))
       )
+
+      const apiNode = nodeById.get(node.id)
+      const filePath = (node.data?.file_path as string) ?? apiNode?.file_path
+      const isInternal = (node.data?.node_type as string) !== 'external' && (apiNode?.node_type !== 'external')
+      if (blameAvailable && isInternal && filePath) {
+        if (blameDelayRef.current) {
+          clearTimeout(blameDelayRef.current)
+          blameDelayRef.current = null
+        }
+        setBlameData(null)
+        setBlameError(null)
+        const nodeId = node.id
+        const x = ev.clientX
+        const y = ev.clientY
+        setHoveredBlameNode({ nodeId, filePath, x, y })
+        hoveredBlameKeyRef.current = { nodeId, filePath }
+        blameDelayRef.current = setTimeout(() => {
+          blameDelayRef.current = null
+          api.getBlame(analysis.id, filePath).then(
+            (data) => {
+              if (hoveredBlameKeyRef.current?.nodeId === nodeId && hoveredBlameKeyRef.current?.filePath === filePath) {
+                setBlameData(data)
+                setBlameError(null)
+              }
+            },
+            (err: Error) => {
+              if (hoveredBlameKeyRef.current?.nodeId === nodeId && hoveredBlameKeyRef.current?.filePath === filePath) {
+                setBlameError(err.message ?? 'Could not load blame')
+                setBlameData(null)
+              }
+            }
+          )
+        }, 300)
+      } else {
+        setHoveredBlameNode(null)
+        hoveredBlameKeyRef.current = null
+      }
     },
-    [filteredEdges, setNodes, setEdges]
+    [analysis.id, blameAvailable, filteredEdges, nodeById, setNodes, setEdges]
   )
 
   const onNodeMouseLeave = useCallback(() => {
@@ -367,6 +516,14 @@ function GraphFlow({
     setEdges((edges) =>
       edges.map((e) => ({ ...e, data: { ...e.data, hovered: false } }))
     )
+    if (blameDelayRef.current) {
+      clearTimeout(blameDelayRef.current)
+      blameDelayRef.current = null
+    }
+    setHoveredBlameNode(null)
+    setBlameData(null)
+    setBlameError(null)
+    hoveredBlameKeyRef.current = null
   }, [setNodes, setEdges])
 
   const onEdgeMouseEnter = useCallback(
@@ -399,48 +556,137 @@ function GraphFlow({
     )
   }, [setNodes, setEdges])
 
+  const tooltipOffset = 12
+  const showTooltip = hoveredBlameNode !== null
+  const tooltipLoading = showTooltip && blameData === null && blameError === null
+  const tooltipSuccess = showTooltip && blameData !== null
+  const tooltipError = showTooltip && blameError !== null
+  const hoveredApiNode = hoveredBlameNode ? nodeById.get(hoveredBlameNode.nodeId) : null
+  const hoveredRfNode = hoveredBlameNode ? nodes.find((n) => n.id === hoveredBlameNode.nodeId) : null
+  const tooltipCommitHash =
+    blameData?.commit_hash ??
+    hoveredApiNode?.commit_hash ??
+    (hoveredRfNode?.data?.commit_hash as string | undefined) ??
+    null
+
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onNodeClick={onNodeClick}
-      onEdgeClick={onEdgeClick}
-      onPaneClick={onPaneClick}
-      onNodeMouseEnter={onNodeMouseEnter}
-      onNodeMouseLeave={onNodeMouseLeave}
-      onEdgeMouseEnter={onEdgeMouseEnter}
-      onEdgeMouseLeave={onEdgeMouseLeave}
-      nodeTypes={nodeTypes}
-      edgeTypes={edgeTypes}
-      fitView
-      fitViewOptions={{
-        padding: 0.2,
-        duration: layoutAnimation ? 300 : 0,
-      }}
-      minZoom={0.1}
-      maxZoom={3}
-      nodesDraggable={true}
-      nodesConnectable={false}
-      elementsSelectable={true}
-      proOptions={{ hideAttribution: true }}
-      className="rounded-xl"
-    >
-      <Background />
-      <Panel position="bottom-center">
-        <GraphFloatingControls />
-      </Panel>
-    </ReactFlow>
+    <>
+      <EdgeBundlingContext.Provider value={{ bundledPaths }}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeClick={onNodeClick}
+        onEdgeClick={onEdgeClick}
+        onPaneClick={onPaneClick}
+        onNodeMouseEnter={onNodeMouseEnter}
+        onNodeMouseLeave={onNodeMouseLeave}
+        onEdgeMouseEnter={onEdgeMouseEnter}
+        onEdgeMouseLeave={onEdgeMouseLeave}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        fitView
+        fitViewOptions={{
+          padding: 0.2,
+          duration: layoutAnimation ? 300 : 0,
+        }}
+        minZoom={0.1}
+        maxZoom={3}
+        nodesDraggable={true}
+        nodesConnectable={false}
+        elementsSelectable={true}
+        proOptions={{ hideAttribution: true }}
+        className="rounded-xl"
+      >
+        <Background />
+        <Panel position="top-right">
+          {onOpenSettings && (
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              className="p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg hover:bg-gray-100 dark:hover:bg-slate-800/80 transition-colors"
+              aria-label="Open settings"
+              title="Settings"
+            >
+              <Settings className="w-4 h-4 text-gray-600 dark:text-slate-400" aria-hidden />
+            </button>
+          )}
+        </Panel>
+        <Panel position="bottom-center">
+          <GraphFloatingControls />
+        </Panel>
+      </ReactFlow>
+      </EdgeBundlingContext.Provider>
+      {showTooltip && hoveredBlameNode && (
+        <div
+          role="tooltip"
+          aria-label={
+            tooltipCommitHash
+              ? `Last commit ${tooltipCommitHash}${blameData ? ` by ${blameData.author_name}: ${blameData.subject}` : ''}`
+              : tooltipError
+                ? blameError ?? 'Could not load blame'
+                : 'Loading blame…'
+          }
+          className="pointer-events-none fixed z-[1000] max-w-sm rounded-lg border border-gray-200 bg-white/95 px-3 py-2 text-left shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-800/95"
+          style={{
+            left: hoveredBlameNode.x + tooltipOffset,
+            top: hoveredBlameNode.y + tooltipOffset,
+          }}
+        >
+          {tooltipLoading && !tooltipCommitHash && (
+            <p className="text-xs text-gray-500 dark:text-slate-400">Loading…</p>
+          )}
+          {(tooltipCommitHash || tooltipSuccess) && (
+            <div className="space-y-1 text-xs">
+              {tooltipCommitHash ? (
+                <p
+                  className="font-mono-ui text-gray-600 dark:text-slate-400"
+                  title={tooltipCommitHash}
+                >
+                  Commit: {tooltipCommitHash.slice(0, 7)}
+                </p>
+              ) : null}
+              {tooltipSuccess && blameData && (
+                <>
+                  <p className="font-medium text-gray-800 dark:text-slate-200">
+                    {blameData.author_name}
+                    {blameData.author_email ? (
+                      <span className="ml-1 font-normal text-gray-500 dark:text-slate-400">
+                        ({blameData.author_email})
+                      </span>
+                    ) : null}
+                  </p>
+                  {blameData.date ? (
+                    <p className="text-gray-500 dark:text-slate-400">{blameData.date}</p>
+                  ) : null}
+                  <p
+                    className="line-clamp-3 text-gray-700 dark:text-slate-300"
+                    title={blameData.subject}
+                  >
+                    {blameData.subject}
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+          {tooltipError && !tooltipCommitHash && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              {blameError}
+            </p>
+          )}
+        </div>
+      )}
+    </>
   )
 }
 
-export function GraphVisualization({ analysis }: GraphVisualizationProps) {
+export function GraphVisualization({ analysis, onOpenSettings }: GraphVisualizationProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const setFlowWrapperRef = useGraphStore((s) => s.setFlowWrapperRef)
   const isDark = useThemeStore((s) => s.isDark)
   const graphBackground = useGraphStore((s) => s.graphBackground)
-  const { selectedFolderPath, showStdlibNodes, showExternalPackages } =
+  const { selectedFolderPath, showStdlibNodes, showExternalPackages, collapsedFolders } =
     useGraphStore()
 
   const { nodes: filteredNodes, edges: filteredEdges } = useMemo(
@@ -452,6 +698,17 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
         showExternalPackages
       ),
     [analysis, selectedFolderPath, showStdlibNodes, showExternalPackages]
+  )
+
+  const { nodes: effectiveNodes, edges: effectiveEdges } = useMemo(
+    () =>
+      getEffectiveNodesAndEdges(
+        filteredNodes,
+        filteredEdges,
+        analysis.project_path,
+        new Set(collapsedFolders)
+      ),
+    [filteredNodes, filteredEdges, analysis.project_path, collapsedFolders]
   )
 
   const setRef = useCallback(
@@ -488,8 +745,12 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
     >
       <ReactFlowProvider>
         <GraphFlow
+          analysis={analysis}
           filteredNodes={filteredNodes}
           filteredEdges={filteredEdges}
+          effectiveNodes={effectiveNodes}
+          effectiveEdges={effectiveEdges}
+          onOpenSettings={onOpenSettings}
         />
       </ReactFlowProvider>
       {filteredNodes.length === 0 && (

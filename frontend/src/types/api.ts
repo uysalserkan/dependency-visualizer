@@ -34,6 +34,8 @@ export interface Node {
   size_bytes?: number | null
   /** Line count (internal nodes only; undefined if file too large or unavailable) */
   line_count?: number | null
+  /** Latest commit hash for this file (internal nodes only; set at analysis time) */
+  commit_hash?: string | null
 }
 
 export interface Edge {
@@ -100,6 +102,14 @@ export interface FilePreview {
   line_count: number
   size_bytes: number
   imports: ImportInfo[]
+}
+
+export interface FileBlameResponse {
+  commit_hash: string
+  subject: string
+  author_name: string
+  author_email: string
+  date: string
 }
 
 export interface Insight {

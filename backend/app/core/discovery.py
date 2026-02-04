@@ -1,6 +1,7 @@
 """File discovery module for finding source files in a project."""
 
 import fnmatch
+import os
 from pathlib import Path
 
 from app.core.parser.factory import ParserRegistry
@@ -10,6 +11,8 @@ from app.core.parser.factory import ParserRegistry
 DEFAULT_IGNORE_PATTERNS = [
     ".venv",
     "venv",
+    ".dev",
+    ".master",
     "env",
     ".env",
     "__pycache__",
@@ -26,6 +29,9 @@ DEFAULT_IGNORE_PATTERNS = [
     "dist",
     "build",
     "*.egg-info",
+    "*.egg",
+    "*.dist-info",
+    "site-packages",
     ".eggs",
     ".next",
     ".nuxt",
@@ -94,13 +100,21 @@ class FileDiscovery:
         if not project_path.is_dir():
             raise ValueError(f"Project path is not a directory: {project_path}")
 
-        supported_extensions = ParserRegistry.get_supported_extensions()
+        supported_extensions = frozenset(ParserRegistry.get_supported_extensions())
         discovered_files = []
+        project_path = Path(project_path)
+        root_str = str(project_path)
 
-        # Recursively find all files with supported extensions
-        for ext in supported_extensions:
-            for file_path in project_path.rglob(f"*{ext}"):
-                if file_path.is_file() and not self._should_ignore(file_path):
+        # Single tree walk instead of one rglob per extension (much faster on large projects)
+        for dirpath, dirnames, filenames in os.walk(root_str):
+            # Prune ignored directories so we don't descend into .venv, node_modules, etc.
+            dirnames[:] = [
+                d for d in dirnames
+                if not any(fnmatch.fnmatch(d, p) for p in self.ignore_patterns)
+            ]
+            for name in filenames:
+                file_path = Path(dirpath) / name
+                if file_path.suffix in supported_extensions and not self._should_ignore(file_path):
                     discovered_files.append(file_path)
 
         return sorted(discovered_files)

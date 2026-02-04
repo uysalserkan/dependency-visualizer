@@ -5,12 +5,12 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { SourceImportModal } from '@/components/SourceImportModal'
 import { GraphVisualization } from '@/components/GraphVisualization'
 import { NodeListView } from '@/components/NodeListView'
-import { ControlPanel } from '@/components/ControlPanel'
 import { MetricsPanel } from '@/components/MetricsPanel'
 import { InsightsPanel } from '@/components/InsightsPanel'
 import { ExportButton } from '@/components/ExportButton'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { ProjectFolderTree } from '@/components/ProjectFolderTree'
+import { SettingsModal } from '@/components/SettingsModal'
 import { Network, GitBranch, List, FolderPlus } from 'lucide-react'
 
 /** Set to true to re-enable the List view tab. */
@@ -22,6 +22,7 @@ function App() {
   const viewMode = useGraphStore((state) => state.viewMode)
   const setViewMode = useGraphStore((state) => state.setViewMode)
   const [sourceImportOpen, setSourceImportOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   useKeyboardShortcuts()
 
@@ -106,9 +107,8 @@ function App() {
             className={`transition-all duration-300 ease-in-out ${isFullScreen ? 'fixed inset-0 z-40 bg-gray-50 dark:bg-slate-950 p-4' : 'grid grid-cols-1 xl:grid-cols-12 gap-5 h-[calc(100vh-120px)]'}`}
           >
             {!isFullScreen && (
-              <aside className="xl:col-span-2 space-y-5 overflow-y-auto" aria-label="Analysis controls">
+              <aside className="xl:col-span-2 flex flex-col min-h-0 overflow-y-auto" aria-label="Analysis controls">
                 <ProjectFolderTree />
-                <ControlPanel />
               </aside>
             )}
 
@@ -147,7 +147,10 @@ function App() {
                 className={`flex-1 min-h-0 rounded-xl border border-gray-200 dark:border-white/5 overflow-hidden relative backdrop-blur-md bg-white/80 dark:bg-slate-900/50 ${isFullScreen ? 'shadow-2xl' : ''}`}
               >
                 {viewMode === 'graph' || !LIST_VIEW_ENABLED ? (
-                  <GraphVisualization analysis={analysis} />
+                  <GraphVisualization
+                    analysis={analysis}
+                    onOpenSettings={() => setSettingsOpen(true)}
+                  />
                 ) : (
                   <NodeListView />
                 )}
@@ -173,6 +176,10 @@ function App() {
       </footer>
 
       <SourceImportModal open={sourceImportOpen} onClose={() => setSourceImportOpen(false)} />
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
     </div>
   )
 }
