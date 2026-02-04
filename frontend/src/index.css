@@ -100,6 +100,16 @@
     background-size: 16px 16px;
   }
 
+  /* Page background depth: subtle grid + spotlight (dark mode only) */
+  .dark .page-bg-depth {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+      radial-gradient(ellipse 120% 80% at 50% 0%, rgba(255, 255, 255, 0.05) 0%, transparent 55%);
+    background-size: 20px 20px, 20px 20px, 100% 100%;
+    background-position: 0 0, 0 0, 0 0;
+  }
+
   .font-mono-ui {
     font-family: ui-monospace, 'SF Mono', 'Monaco', 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', monospace;
   }
