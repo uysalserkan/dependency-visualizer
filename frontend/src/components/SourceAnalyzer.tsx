@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { FolderOpen, GitBranch, Loader2 } from 'lucide-react'
-import { useAnalyzeProject, useAnalyzeRepository } from '@/hooks/useAnalysis'
+import { FileArchive, FolderOpen, GitBranch, Loader2 } from 'lucide-react'
+import { useAnalyzeProject, useAnalyzeRepository, useAnalyzeZip } from '@/hooks/useAnalysis'
 import { useGraphStore } from '@/stores/graphStore'
 import { cn } from '@/lib/utils'
 
-type SourceType = 'local' | 'git'
+type SourceType = 'local' | 'git' | 'zip'
 
 interface SourceAnalyzerProps {
   /** Called after a successful analyze (e.g. to close a modal). */
@@ -16,45 +16,48 @@ export function SourceAnalyzer({ onSuccessCallback }: SourceAnalyzerProps = {}) 
   const [projectPath, setProjectPath] = useState('')
   const [repositoryUrl, setRepositoryUrl] = useState('')
   const [branch, setBranch] = useState('')
+  const [zipFile, setZipFile] = useState<File | null>(null)
 
   const setAnalysis = useGraphStore((state) => state.setAnalysis)
   const { mutate: analyzeProject, isPending: isPendingLocal, error: errorLocal } = useAnalyzeProject()
   const { mutate: analyzeRepository, isPending: isPendingRepo, error: errorRepo } = useAnalyzeRepository()
+  const { mutate: analyzeZip, isPending: isPendingZip, error: errorZip } = useAnalyzeZip()
 
-  const isPending = isPendingLocal || isPendingRepo
-  const error = sourceType === 'local' ? errorLocal : errorRepo
+  const isPending = isPendingLocal || isPendingRepo || isPendingZip
+  const error =
+    sourceType === 'local' ? errorLocal : sourceType === 'git' ? errorRepo : errorZip
 
   const handleAnalyze = () => {
+    const onSuccess = () => {
+      onSuccessCallback?.()
+    }
     if (sourceType === 'local') {
       if (!projectPath.trim()) return
       analyzeProject(
         { project_path: projectPath.trim() },
-        {
-          onSuccess: (data) => {
-            setAnalysis(data)
-            onSuccessCallback?.()
-          },
-        }
+        { onSuccess: (data) => { setAnalysis(data); onSuccess() } },
       )
-    } else {
+    } else if (sourceType === 'git') {
       if (!repositoryUrl.trim()) return
       analyzeRepository(
         {
           repository_url: repositoryUrl.trim(),
           branch: branch.trim() || undefined,
         },
-        {
-          onSuccess: (data) => {
-            setAnalysis(data)
-            onSuccessCallback?.()
-          },
-        }
+        { onSuccess: (data) => { setAnalysis(data); onSuccess() } },
       )
+    } else {
+      if (!zipFile) return
+      analyzeZip(zipFile, { onSuccess: (data) => { setAnalysis(data); onSuccess() } })
     }
   }
 
   const canAnalyze =
-    sourceType === 'local' ? projectPath.trim().length > 0 : repositoryUrl.trim().length > 0
+    sourceType === 'local'
+      ? projectPath.trim().length > 0
+      : sourceType === 'git'
+        ? repositoryUrl.trim().length > 0
+        : zipFile != null
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleAnalyze()
@@ -99,6 +102,21 @@ export function SourceAnalyzer({ onSuccessCallback }: SourceAnalyzerProps = {}) 
             <GitBranch className="w-4 h-4 shrink-0" aria-hidden />
             <span>Git repository</span>
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={sourceType === 'zip'}
+            onClick={() => setSourceType('zip')}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-medium transition-all',
+              sourceType === 'zip'
+                ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+            )}
+          >
+            <FileArchive className="w-4 h-4 shrink-0" aria-hidden />
+            <span>ZIP</span>
+          </button>
         </div>
       </div>
 
@@ -123,7 +141,7 @@ export function SourceAnalyzer({ onSuccessCallback }: SourceAnalyzerProps = {}) 
             disabled={isPending}
           />
         </div>
-      ) : (
+      ) : sourceType === 'git' ? (
         <div className="space-y-3">
           <label
             htmlFor="source-repository-url"
@@ -160,6 +178,29 @@ export function SourceAnalyzer({ onSuccessCallback }: SourceAnalyzerProps = {}) 
             disabled={isPending}
           />
         </div>
+      ) : (
+        <div className="space-y-3">
+          <label
+            htmlFor="source-zip-file"
+            className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-slate-400"
+          >
+            <span>ZIP archive</span>
+          </label>
+          <input
+            id="source-zip-file"
+            type="file"
+            accept=".zip"
+            onChange={(e) => setZipFile(e.target.files?.[0] ?? null)}
+            aria-label="Select .zip project archive"
+            className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-gray-900 dark:text-white file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-600 dark:file:bg-indigo-900/30 dark:file:text-indigo-400"
+            disabled={isPending}
+          />
+          {zipFile && (
+            <p className="text-sm text-gray-500 dark:text-slate-400 font-mono">
+              {zipFile.name}
+            </p>
+          )}
+        </div>
       )}
 
       <button
@@ -171,7 +212,9 @@ export function SourceAnalyzer({ onSuccessCallback }: SourceAnalyzerProps = {}) 
           isPending
             ? sourceType === 'git'
               ? 'Cloning and analyzing'
-              : 'Analyzing project'
+              : sourceType === 'zip'
+                ? 'Analyzing ZIP'
+                : 'Analyzing project'
             : 'Analyze'
         }
         className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-indigo-500 text-white font-semibold rounded-xl hover:bg-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-950"
@@ -179,10 +222,18 @@ export function SourceAnalyzer({ onSuccessCallback }: SourceAnalyzerProps = {}) 
         {isPending ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" aria-hidden />
-            <span>{sourceType === 'git' ? 'Cloning & analyzing...' : 'Analyzing...'}</span>
+            <span>
+              {sourceType === 'git'
+                ? 'Cloning & analyzing...'
+                : sourceType === 'zip'
+                  ? 'Analyzing ZIP...'
+                  : 'Analyzing...'}
+            </span>
           </>
         ) : (
-          <span>{sourceType === 'git' ? 'Clone & analyze' : 'Analyze'}</span>
+          <span>
+            {sourceType === 'git' ? 'Clone & analyze' : sourceType === 'zip' ? 'Analyze ZIP' : 'Analyze'}
+          </span>
         )}
       </button>
 
@@ -207,10 +258,15 @@ export function SourceAnalyzer({ onSuccessCallback }: SourceAnalyzerProps = {}) 
               <span>focuses search after analysis</span>
             </p>
           </>
-        ) : (
+        ) : sourceType === 'git' ? (
           <>
             <p>HTTPS only. GitHub, GitLab, Bitbucket, Gitea, Codeberg.</p>
             <p className="text-gray-600 dark:text-slate-400">Example: https://github.com/owner/repo</p>
+          </>
+        ) : (
+          <>
+            <p>Upload a .zip of your project directory (e.g. from Finder or Explorer).</p>
+            <p className="text-gray-600 dark:text-slate-400">Max 100 MB compressed, 500 MB uncompressed.</p>
           </>
         )}
       </div>

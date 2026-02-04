@@ -3,6 +3,9 @@ import { Folder } from 'lucide-react'
 import { memo } from 'react'
 import { useGraphStore } from '@/stores/graphStore'
 import { useThemeStore } from '@/stores/themeStore'
+import { useIsMobile } from '@/hooks/useMediaQuery'
+import { useViewportZoom } from '@/contexts/ViewportLODContext'
+import { LOD_ZOOM_THRESHOLD } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 
 export interface ClusterNodeData extends Record<string, unknown> {
@@ -15,10 +18,14 @@ function ClusterNodeComponent(props: NodeProps) {
   const { data, selected } = props
   const isDark = useThemeStore((s) => s.isDark)
   const setCollapsedFolder = useGraphStore((s) => s.setCollapsedFolder)
+  const zoom = useViewportZoom()
+  const isMobile = useIsMobile()
   const d = data as ClusterNodeData
   const folderPath = d.folderPath ?? ''
   const label = d.label ?? (folderPath || '(root)')
   const nodeCount = d.nodeCount ?? 0
+
+  const showLabelsLOD = !isMobile || zoom >= LOD_ZOOM_THRESHOLD
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -32,7 +39,8 @@ function ClusterNodeComponent(props: NodeProps) {
         type="button"
         onClick={handleClick}
         className={cn(
-          'flex items-center gap-2 rounded-xl border-2 border-dashed px-3 py-2 transition-all text-left min-w-[120px]',
+          'flex items-center gap-2 rounded-xl border-2 border-dashed transition-all text-left',
+          showLabelsLOD ? 'px-3 py-2 min-w-[120px]' : 'p-2',
           'bg-white/80 dark:bg-slate-800/80',
           isDark
             ? 'border-slate-500 text-slate-200 hover:border-indigo-400 hover:bg-slate-800'
@@ -45,17 +53,21 @@ function ClusterNodeComponent(props: NodeProps) {
           className="w-4 h-4 shrink-0 text-amber-500 dark:text-amber-400"
           aria-hidden
         />
-        <span className="flex-1 min-w-0 truncate font-mono-ui text-xs">
-          {label}
-        </span>
-        <span
-          className={cn(
-            'shrink-0 text-xs font-medium tabular-nums',
-            isDark ? 'text-slate-400' : 'text-slate-500'
-          )}
-        >
-          {nodeCount}
-        </span>
+        {showLabelsLOD && (
+          <>
+            <span className="flex-1 min-w-0 truncate font-mono-ui text-xs">
+              {label}
+            </span>
+            <span
+              className={cn(
+                'shrink-0 text-xs font-medium tabular-nums',
+                isDark ? 'text-slate-400' : 'text-slate-500'
+              )}
+            >
+              {nodeCount}
+            </span>
+          </>
+        )}
       </button>
       <Handle type="source" position={Position.Bottom} className="!border-0 !w-0 !h-0 !min-w-0 !min-h-0" />
     </>

@@ -13,3 +13,9 @@ export function useAnalyzeRepository() {
     mutationFn: (request: AnalyzeRepositoryRequest) => api.analyzeRepository(request),
   })
 }
+
+export function useAnalyzeZip() {
+  return useMutation({
+    mutationFn: (file: File) => api.analyzeZip(file),
+  })
+}

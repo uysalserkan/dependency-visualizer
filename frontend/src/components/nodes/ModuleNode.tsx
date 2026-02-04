@@ -2,6 +2,9 @@ import { Handle, type NodeProps, Position } from '@xyflow/react'
 import { memo } from 'react'
 import { useGraphStore } from '@/stores/graphStore'
 import { useThemeStore } from '@/stores/themeStore'
+import { useIsMobile } from '@/hooks/useMediaQuery'
+import { useViewportZoom } from '@/contexts/ViewportLODContext'
+import { LOD_ZOOM_THRESHOLD } from '@/lib/constants'
 import {
   nodeColorForId,
   gradientStopsForHex,
@@ -27,6 +30,8 @@ export interface ModuleNodeData extends Record<string, unknown> {
 function ModuleNodeComponent(props: NodeProps) {
   const { id, data, selected } = props
   const isDark = useThemeStore((s) => s.isDark)
+  const zoom = useViewportZoom()
+  const isMobile = useIsMobile()
   const {
     showNodeLabels,
     nodeSizeMode,
@@ -34,6 +39,9 @@ function ModuleNodeComponent(props: NodeProps) {
     labelFontSize,
     nodeBorderWidth,
   } = useGraphStore()
+
+  const showLabelsLOD =
+    showNodeLabels && (!isMobile || zoom >= LOD_ZOOM_THRESHOLD)
 
   const d = data as ModuleNodeData
   const kind = d.external_kind
@@ -96,7 +104,7 @@ function ModuleNodeComponent(props: NodeProps) {
           ...(isDiamond ? { clipPath: diamondClip, WebkitClipPath: diamondClip } : {}),
         }}
       >
-        {showNodeLabels && d.label && (
+        {showLabelsLOD && d.label && (
           <span
             className="text-center font-mono-ui truncate max-w-full px-1"
             style={{

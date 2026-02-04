@@ -23,6 +23,7 @@
     "lucide-react": "^0.462.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-spring-bottom-sheet": "^3.2.0",
     "react-syntax-highlighter": "^16.1.0",
     "tailwind-merge": "^2.5.5",
     "urql": "^4.1.0",

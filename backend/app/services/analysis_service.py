@@ -1,6 +1,7 @@
 """Service layer for project analysis."""
 
 import asyncio
+import shutil
 import uuid
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
@@ -30,6 +31,7 @@ from app.core.parallel_parser import ParallelParser
 from app.core.trace_decorators import traced
 from app.core.repository import clone_repository, remove_clone, repo_cache_id
 from app.core.validation import validate_project_path
+from app.core.zip_extract import extract_zip_to_temp
 
 logger = get_logger(__name__)
 
@@ -237,11 +239,6 @@ class AnalysisService:
             span.set_attribute("project.path", project_path)
             span.set_attribute("ignore_patterns.count", len(ignore_patterns or []))
             
-        # Start tracing span
-        with tracer.start_as_current_span("analyze_project") as span:
-            span.set_attribute("project.path", project_path)
-            span.set_attribute("ignore_patterns.count", len(ignore_patterns or []))
-            
             # Track active analyses
             active_analyses.inc()
             
@@ -256,136 +253,123 @@ class AnalysisService:
                     ignore_patterns=ignore_patterns,
                 )
                 
-                # Track analysis duration
-                with analysis_duration_seconds.time():
-                    try:
-                        # Discover files (I/O-bound, run in thread pool)
-                        with tracer.start_as_current_span("discover_files"):
-                            loop = asyncio.get_event_loop()
-                            discoverer = FileDiscovery(ignore_patterns=ignore_patterns or [])
-                            files = await loop.run_in_executor(
-                                self.executor,
-                                discoverer.discover_files,
-                                path
-                            )
-                            span.set_attribute("files.discovered", len(files))
-                        
-                        if not files:
-                            logger.warning("No files found", project_path=str(path))
-                            analysis_requests_total.labels(status="error").inc()
-                            raise AnalysisError(
-                                "No supported source files found in project",
-                                details={"project_path": str(path)},
-                            )
-                        
-                        logger.info("Files discovered", file_count=len(files))
-                        
-                        # Parse files in parallel (CPU-bound, run in thread pool)
-                        with tracer.start_as_current_span("parse_files"):
-                            all_imports, warnings = await loop.run_in_executor(
-                                self.executor,
-                                lambda: self.parallel_parser.parse_files(
-                                    files, path, extractor_backend
-                                ),
-                            )
-                            span.set_attribute("imports.count", len(all_imports))
-                            span.set_attribute("warnings.count", len(warnings))
-                        
-                        logger.info(
-                            "Files parsed",
-                            import_count=len(all_imports),
-                            warning_count=len(warnings),
-                        )
-                        
-                        # Log warnings for debugging
-                        if warnings:
-                            for warning in warnings[:10]:  # Log first 10 warnings
-                                logger.warning("Parse warning", message=warning)
-                        
-                        # Build dependency graph (CPU-bound, run in thread pool)
-                        with tracer.start_as_current_span("build_graph"):
-                            graph_builder = await loop.run_in_executor(
-                                self.executor,
-                                self._build_graph,
-                                path,
-                                all_imports
-                            )
-                        
-                        # Analyze graph (CPU-bound, run in thread pool)
-                        with tracer.start_as_current_span("analyze_graph"):
-                            analyzer, metrics, pagerank, betweenness = await loop.run_in_executor(
-                                self.executor,
-                                self._analyze_graph,
-                                graph_builder
-                            )
-                            span.set_attribute("graph.nodes", metrics.total_files)
-                            span.set_attribute("graph.edges", metrics.total_imports)
-                        
-                        # Add circular dependency warnings
-                        warnings = self._add_cycle_warnings(metrics, warnings, path)
-
-                        cycle_participation = analyzer.get_cycle_participation()
-                        node_depths = analyzer.get_node_depths()
-                        closeness = analyzer.get_closeness_centrality()
-                        eigenvector = analyzer.get_eigenvector_centrality()
-                        external_ratio_map = analyzer.get_external_ratio_per_node()
-
-                        # Create result
-                        analysis_id = str(uuid.uuid4())
-                        raw_nodes = graph_builder.get_nodes(
-                            pagerank,
-                            betweenness,
-                            cycle_participation=cycle_participation,
-                            node_depths=node_depths,
-                            closeness_scores=closeness,
-                            eigenvector_scores=eigenvector,
-                            external_ratio_map=external_ratio_map,
-                        )
-                        nodes = _enrich_nodes_with_file_stats(path, raw_nodes)
-                        nodes = _enrich_nodes_with_blame(path, nodes)
-                        result = AnalysisResult(
-                            id=analysis_id,
-                            project_path=str(path),
-                            nodes=nodes,
-                            edges=graph_builder.get_edges(),
-                            metrics=metrics,
-                            warnings=warnings,
-                        )
-                        
-                        # Cache result
-                        self.cache.save(result)
-                        self._cache_in_memory(analysis_id, (result, analyzer, graph_builder))
-                        
-                        # Update metrics
-                        analysis_requests_total.labels(status="success").inc()
-                        memory_cache_size.set(len(self._memory_cache))
-                        span.set_attribute("analysis.id", analysis_id)
-                        span.set_attribute("analysis.status", "success")
-                        
-                        logger.info(
-                            "Analysis completed",
-                            analysis_id=analysis_id,
-                            node_count=len(result.nodes),
-                            edge_count=len(result.edges),
-                        )
-                        
-                        return result
-                
-                    except AnalysisError:
-                        analysis_requests_total.labels(status="error").inc()
-                        span.set_attribute("analysis.status", "error")
-                        raise
-                    except Exception as e:
-                        logger.exception("Analysis failed", project_path=str(path))
-                        analysis_requests_total.labels(status="error").inc()
-                        span.set_attribute("analysis.status", "error")
-                        span.record_exception(e)
-                        raise AnalysisError(
-                            "Failed to analyze project",
-                            details={"error": str(e)},
-                        )
+                return await self._analyze_project_at_path(
+                    path, ignore_patterns, extractor_backend, span
+                )
             finally:
                 active_analyses.dec()
+
+    async def _analyze_project_at_path(
+        self,
+        path: Path,
+        ignore_patterns: list[str] | None,
+        extractor_backend: str | None,
+        span: trace.Span,
+    ) -> AnalysisResult:
+        """Run analysis on an existing directory path (no path validation)."""
+        with analysis_duration_seconds.time():
+            try:
+                loop = asyncio.get_event_loop()
+                with tracer.start_as_current_span("discover_files"):
+                    discoverer = FileDiscovery(ignore_patterns=ignore_patterns or [])
+                    files = await loop.run_in_executor(
+                        self.executor,
+                        discoverer.discover_files,
+                        path,
+                    )
+                    span.set_attribute("files.discovered", len(files))
+                if not files:
+                    logger.warning("No files found", project_path=str(path))
+                    analysis_requests_total.labels(status="error").inc()
+                    raise AnalysisError(
+                        "No supported source files found in project",
+                        details={"project_path": str(path)},
+                    )
+                logger.info("Files discovered", file_count=len(files))
+                with tracer.start_as_current_span("parse_files"):
+                    all_imports, warnings = await loop.run_in_executor(
+                        self.executor,
+                        lambda: self.parallel_parser.parse_files(
+                            files, path, extractor_backend
+                        ),
+                    )
+                    span.set_attribute("imports.count", len(all_imports))
+                    span.set_attribute("warnings.count", len(warnings))
+                logger.info(
+                    "Files parsed",
+                    import_count=len(all_imports),
+                    warning_count=len(warnings),
+                )
+                if warnings:
+                    for warning in warnings[:10]:
+                        logger.warning("Parse warning", message=warning)
+                with tracer.start_as_current_span("build_graph"):
+                    graph_builder = await loop.run_in_executor(
+                        self.executor,
+                        self._build_graph,
+                        path,
+                        all_imports,
+                    )
+                with tracer.start_as_current_span("analyze_graph"):
+                    analyzer, metrics, pagerank, betweenness = await loop.run_in_executor(
+                        self.executor,
+                        self._analyze_graph,
+                        graph_builder,
+                    )
+                    span.set_attribute("graph.nodes", metrics.total_files)
+                    span.set_attribute("graph.edges", metrics.total_imports)
+                warnings = self._add_cycle_warnings(metrics, warnings, path)
+                cycle_participation = analyzer.get_cycle_participation()
+                node_depths = analyzer.get_node_depths()
+                closeness = analyzer.get_closeness_centrality()
+                eigenvector = analyzer.get_eigenvector_centrality()
+                external_ratio_map = analyzer.get_external_ratio_per_node()
+                analysis_id = str(uuid.uuid4())
+                raw_nodes = graph_builder.get_nodes(
+                    pagerank,
+                    betweenness,
+                    cycle_participation=cycle_participation,
+                    node_depths=node_depths,
+                    closeness_scores=closeness,
+                    eigenvector_scores=eigenvector,
+                    external_ratio_map=external_ratio_map,
+                )
+                nodes = _enrich_nodes_with_file_stats(path, raw_nodes)
+                nodes = _enrich_nodes_with_blame(path, nodes)
+                result = AnalysisResult(
+                    id=analysis_id,
+                    project_path=str(path),
+                    nodes=nodes,
+                    edges=graph_builder.get_edges(),
+                    metrics=metrics,
+                    warnings=warnings,
+                )
+                self.cache.save(result)
+                self._cache_in_memory(analysis_id, (result, analyzer, graph_builder))
+                analysis_requests_total.labels(status="success").inc()
+                memory_cache_size.set(len(self._memory_cache))
+                span.set_attribute("analysis.id", analysis_id)
+                span.set_attribute("analysis.status", "success")
+                logger.info(
+                    "Analysis completed",
+                    analysis_id=analysis_id,
+                    node_count=len(result.nodes),
+                    edge_count=len(result.edges),
+                )
+                return result
+            except AnalysisError:
+                analysis_requests_total.labels(status="error").inc()
+                span.set_attribute("analysis.status", "error")
+                raise
+            except Exception as e:
+                logger.exception("Analysis failed", project_path=str(path))
+                analysis_requests_total.labels(status="error").inc()
+                span.set_attribute("analysis.status", "error")
+                span.record_exception(e)
+                raise AnalysisError(
+                    "Failed to analyze project",
+                    details={"error": str(e)},
+                )
 
     async def analyze_repository(
         self,
@@ -445,11 +429,14 @@ class AnalysisService:
                     branch=branch,
                 ),
             )
-            result = await self.analyze_project(
-                project_path=str(clone_path),
-                ignore_patterns=ignore_patterns,
-                extractor_backend=extractor_backend,
-            )
+            with tracer.start_as_current_span("analyze_project") as span:
+                span.set_attribute("project.path", str(clone_path))
+                result = await self._analyze_project_at_path(
+                    clone_path,
+                    ignore_patterns,
+                    extractor_backend,
+                    span,
+                )
             # Cache file contents for View File (clone is removed after this)
             file_contents = await loop.run_in_executor(
                 self.executor,
@@ -485,6 +472,81 @@ class AnalysisService:
                 await loop.run_in_executor(
                     self.executor,
                     lambda: remove_clone(clone_path),
+                )
+
+    async def analyze_zip(
+        self,
+        zip_content: bytes,
+        filename: str,
+        ignore_patterns: list[str] | None = None,
+        extractor_backend: str | None = None,
+    ) -> AnalysisResult:
+        """Analyze a project from an uploaded ZIP file.
+
+        Extracts to a temp directory, runs analysis, collects file contents for
+        View File, then removes the temp dir. Result uses filename as project_path.
+        """
+        if not settings.ZIP_ANALYSIS_ENABLED:
+            raise ValidationError(
+                "ZIP analysis is disabled",
+                details={"ZIP_ANALYSIS_ENABLED": False},
+            )
+        extract_path = None
+        loop = asyncio.get_event_loop()
+        try:
+            extract_path = extract_zip_to_temp(
+                zip_content,
+                max_compressed_mb=settings.MAX_ZIP_SIZE_MB,
+                max_uncompressed_mb=settings.MAX_ZIP_UNCOMPRESSED_MB,
+            )
+            active_analyses.inc()
+            with tracer.start_as_current_span("analyze_zip") as span:
+                span.set_attribute("zip.filename", filename)
+                span.set_attribute("project.path", str(extract_path))
+                result = await self._analyze_project_at_path(
+                    extract_path,
+                    ignore_patterns,
+                    extractor_backend,
+                    span,
+                )
+            file_contents = await loop.run_in_executor(
+                self.executor,
+                lambda: _collect_file_contents(
+                    extract_path,
+                    result.nodes,
+                    max_files=settings.REPOSITORY_FILE_PREVIEW_MAX_FILES,
+                    max_bytes_per_file=settings.REPOSITORY_FILE_PREVIEW_MAX_BYTES_PER_FILE,
+                ),
+            )
+            zip_analysis_id = str(uuid.uuid4())
+            zip_result = AnalysisResult(
+                id=zip_analysis_id,
+                project_path=filename,
+                nodes=result.nodes,
+                edges=result.edges,
+                metrics=result.metrics,
+                warnings=result.warnings,
+                file_contents=file_contents,
+            )
+            self.cache.delete(result.id)
+            if result.id in self._memory_cache:
+                del self._memory_cache[result.id]
+                memory_cache_size.set(len(self._memory_cache))
+            self.cache.save(zip_result)
+            self._cache_in_memory(zip_analysis_id, (zip_result, None, None))
+            memory_cache_size.set(len(self._memory_cache))
+            logger.info(
+                "ZIP analysis completed",
+                analysis_id=zip_analysis_id,
+                node_count=len(zip_result.nodes),
+            )
+            return zip_result
+        finally:
+            active_analyses.dec()
+            if extract_path is not None and extract_path.exists():
+                await loop.run_in_executor(
+                    self.executor,
+                    lambda: shutil.rmtree(extract_path, ignore_errors=True),
                 )
 
     def get_analysis(self, analysis_id: str) -> AnalysisResult:

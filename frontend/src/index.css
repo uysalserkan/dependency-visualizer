@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Bottom sheet overlay/sheet above canvas (z-0) and toolbar (z-10) */
+[data-rsbs-backdrop],
+[data-rsbs-root] {
+  z-index: 20 !important;
+}
+
 @layer base {
   :root {
     /* Modern, clean white backgrounds */
@@ -59,14 +65,42 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground transition-colors duration-200;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    @apply bg-background text-foreground transition-colors duration-200 font-sans;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  
+
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold tracking-tight;
+  }
+
+  /* Slim, low-profile scrollbars so small windows feel less cramped */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(203 213 225) transparent;
+  }
+  .dark * {
+    scrollbar-color: rgb(71 85 105) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    border-radius: 3px;
+    background: rgb(203 213 225);
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgb(148 163 184);
+  }
+  .dark *::-webkit-scrollbar-thumb {
+    background: rgb(71 85 105);
+  }
+  .dark *::-webkit-scrollbar-thumb:hover {
+    background: rgb(100 116 139);
   }
 }
 
@@ -111,7 +145,7 @@
   }
 
   .font-mono-ui {
-    font-family: ui-monospace, 'SF Mono', 'Monaco', 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', monospace;
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Monaco', 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', monospace;
   }
 
   /* Animated Blueprint Grid */

@@ -101,6 +101,43 @@ async def analyze_repository(
     )
 
 
+@router.post("/analyze/zip", response_model=AnalysisResultResponse)
+@limiter.limit(settings.RATE_LIMIT_ANALYZE_ZIP, exempt_when=_rate_limit_exempt)
+async def analyze_zip(
+    request: Request,
+    file: UploadFile = File(..., description="Project archive (.zip)"),
+    service: AnalysisService = Depends(get_analysis_service),
+):
+    """Analyze a project from an uploaded ZIP file.
+
+    Extracts the archive to a temporary directory, runs the same analysis as
+    /analyze, then returns the result. File preview (View File) is supported
+    via cached contents. Rate limit: 5 requests per minute.
+    """
+    filename = file.filename or "archive.zip"
+    if not filename.lower().endswith(".zip"):
+        raise HTTPException(status_code=400, detail="File must be a .zip archive")
+    try:
+        content = await file.read()
+        if not content:
+            raise HTTPException(status_code=400, detail="Empty file")
+        max_bytes = settings.MAX_ZIP_SIZE_MB * 1024 * 1024
+        if len(content) > max_bytes:
+            raise HTTPException(
+                status_code=400,
+                detail=f"ZIP file too large (max {settings.MAX_ZIP_SIZE_MB} MB)",
+            )
+        result = await service.analyze_zip(content, filename)
+        return JSONResponse(
+            content=result.model_dump(exclude={"file_contents"}),
+            status_code=200,
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except AnalysisError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
 @router.get("/analysis/{analysis_id}", response_model=AnalysisResultResponse)
 async def get_analysis(
     analysis_id: str,

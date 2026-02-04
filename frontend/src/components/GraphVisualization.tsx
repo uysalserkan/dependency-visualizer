@@ -25,6 +25,7 @@ import { metricForMode, heatFromMetric } from '@/lib/graphNodeUtils'
 import { api } from '@/lib/api'
 import { computeBundledPaths } from '@/lib/edgeBundling'
 import { EdgeBundlingContext } from '@/contexts/EdgeBundlingContext'
+import { ViewportLODContext } from '@/contexts/ViewportLODContext'
 import {
   getEffectiveNodesAndEdges,
   getFolderPath,
@@ -366,6 +367,7 @@ function GraphFlow({
   }, [setSelectedNode, clearHighlight])
 
   const { fitView } = useReactFlow()
+  const [viewportZoom, setViewportZoom] = useState(1)
 
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -572,6 +574,7 @@ function GraphFlow({
   return (
     <>
       <EdgeBundlingContext.Provider value={{ bundledPaths }}>
+      <ViewportLODContext.Provider value={{ zoom: viewportZoom }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -580,6 +583,7 @@ function GraphFlow({
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
         onPaneClick={onPaneClick}
+        onMove={(_ev, viewport) => setViewportZoom(viewport.zoom)}
         onNodeMouseEnter={onNodeMouseEnter}
         onNodeMouseLeave={onNodeMouseLeave}
         onEdgeMouseEnter={onEdgeMouseEnter}
@@ -593,6 +597,9 @@ function GraphFlow({
         }}
         minZoom={0.1}
         maxZoom={3}
+        zoomOnScroll
+        zoomOnPinch
+        panOnDrag
         nodesDraggable={true}
         nodesConnectable={false}
         elementsSelectable={true}
@@ -617,6 +624,7 @@ function GraphFlow({
           <GraphFloatingControls />
         </Panel>
       </ReactFlow>
+      </ViewportLODContext.Provider>
       </EdgeBundlingContext.Provider>
       {showTooltip && hoveredBlameNode && (
         <div
@@ -741,7 +749,7 @@ export function GraphVisualization({ analysis, onOpenSettings }: GraphVisualizat
   return (
     <div
       ref={setRef}
-      className={`relative w-full h-full ${backgroundClass}`}
+      className={`relative w-full h-full z-0 ${backgroundClass}`}
     >
       <ReactFlowProvider>
         <GraphFlow

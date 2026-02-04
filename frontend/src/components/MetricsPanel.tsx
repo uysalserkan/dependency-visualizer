@@ -237,39 +237,47 @@ export function MetricsPanel() {
     setTimeout(() => setPathCopied(false), 2000)
   }
 
+  const panelTitle = selectedNode ? 'Module Details' : selectedFolderPath ? 'Folder Metrics' : 'Project Metrics'
+  const PanelIcon = selectedNode ? FileCode : selectedFolderPath ? Folder : Layers
+
   return (
     <>
-      <div className="rounded-xl border border-gray-200 dark:border-white/5 backdrop-blur-md bg-white/80 dark:bg-slate-900/50 p-5 space-y-5 flex flex-col max-h-[85vh] min-w-0">
-        <h2 className="text-sm font-bold text-gray-900 dark:text-white tracking-tight shrink-0 truncate">
-          {selectedNode ? 'Module Details' : selectedFolderPath ? 'Folder Metrics' : 'Project Metrics'}
-        </h2>
+      <div className="rounded-xl border border-gray-200 dark:border-white/5 backdrop-blur-md bg-white/80 dark:bg-slate-900/50 p-6 space-y-6 flex flex-col min-w-0 shrink-0">
+        <div className="flex items-center justify-between gap-2 shrink-0">
+          <h2 className="text-sm font-bold text-gray-900 dark:text-white tracking-tight truncate min-w-0">
+            {panelTitle}
+          </h2>
+          <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/5 flex items-center justify-center shrink-0">
+            <PanelIcon className="w-4 h-4 text-gray-500 dark:text-slate-400" aria-hidden />
+          </div>
+        </div>
         {!selectedNode && !selectedFolderPath && (
-          <p className="text-[11px] text-gray-500 dark:text-slate-400 shrink-0">
+          <p className="text-xs text-gray-500 dark:text-slate-400 shrink-0 leading-relaxed">
             Click the <span className="font-medium text-indigo-500 dark:text-indigo-400">focus icon</span> on a folder in the tree to view folder metrics.
           </p>
         )}
 
         {selectedNode ? (
           <div className="space-y-5 overflow-y-auto min-h-0 pr-1 -mr-1" aria-label="Module details content">
-            {/* Phase 1: Header with gradient by type + role badges */}
+            {/* Module header card — aligned with InsightsPanel */}
             {(() => {
               const typeStyle = getTypeStyle(selectedNode.node_type)
               const roles = getModuleRoles(selectedNode)
               return (
-                <div className={`rounded-xl p-3 border ${typeStyle.bg} ${typeStyle.border}`}>
-                  <div className="flex items-start gap-2 min-w-0">
+                <div className={`rounded-xl p-4 border ${typeStyle.bg} ${typeStyle.border} backdrop-blur-xl`}>
+                  <div className="flex items-start gap-3 min-w-0">
                     <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${typeStyle.bg} ${typeStyle.text}`}>
                       <FileCode className="w-4 h-4" aria-hidden />
                     </div>
                     <div className="min-w-0 flex-1 overflow-hidden">
-                      <div className="text-[11px] font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5">File</div>
+                      <div className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5">File</div>
                       <div className="text-sm text-gray-900 dark:text-gray-100 break-words leading-snug font-semibold">{selectedNode.label}</div>
                       {roles.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 mt-2">
                           {roles.map((r) => (
                             <span
                               key={r}
-                              className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/20 dark:bg-black/20 text-gray-700 dark:text-gray-300 border border-white/20 dark:border-white/10"
+                              className="text-xs font-medium px-2 py-0.5 rounded-full bg-white/20 dark:bg-black/20 text-gray-700 dark:text-gray-300 border border-white/20 dark:border-white/10"
                             >
                               {r}
                             </span>
@@ -277,7 +285,7 @@ export function MetricsPanel() {
                         </div>
                       )}
                       {/* Degree and one-line summary */}
-                      <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 space-x-2">
+                      <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 space-x-2">
                         <span className="font-mono tabular-nums">
                           Degree: {(selectedNode.import_count ?? 0) + (selectedNode.imported_by_count ?? 0)} ({selectedNode.imported_by_count ?? 0} in, {selectedNode.import_count ?? 0} out)
                         </span>
@@ -302,7 +310,7 @@ export function MetricsPanel() {
 
             {/* Impact text */}
             {getImpactText(selectedNode) && (
-              <div className="rounded-lg p-2.5 border border-indigo-500/20 bg-indigo-500/5 text-[11px] text-gray-700 dark:text-gray-300 min-w-0">
+              <div className="rounded-xl p-3 border border-indigo-500/20 bg-indigo-500/5 text-xs text-gray-700 dark:text-gray-300 min-w-0 backdrop-blur-xl">
                 {getImpactText(selectedNode)}
               </div>
             )}
@@ -320,7 +328,7 @@ export function MetricsPanel() {
                   <ArrowUpCircle className="w-4 h-4 text-indigo-500" aria-hidden />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium truncate">Imports (fan-out)</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">Imports (fan-out)</div>
                   <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400 font-mono-ui tabular-nums">{selectedNode.import_count}</div>
                 </div>
               </button>
@@ -335,7 +343,7 @@ export function MetricsPanel() {
                   <ArrowDownCircle className="w-4 h-4 text-violet-500" aria-hidden />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium truncate">Imported by (fan-in)</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate">Imported by (fan-in)</div>
                   <div className="text-lg font-bold text-violet-600 dark:text-violet-400 font-mono-ui tabular-nums">{selectedNode.imported_by_count}</div>
                 </div>
               </button>
@@ -349,32 +357,32 @@ export function MetricsPanel() {
                 const depth = selectedNode.depth ?? 0
                 return (
                   <>
-                    <div className={`rounded-lg p-2 border text-center min-w-0 ${cycles > 0 ? 'bg-amber-500/10 border-amber-500/25' : 'bg-emerald-500/10 border-emerald-500/20'}`} title={METRIC_TOOLTIPS.Cycles}>
-                      <div className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5 truncate">Cycles</div>
+                    <div className={`rounded-lg p-2.5 border text-center min-w-0 ${cycles > 0 ? 'bg-amber-500/10 border-amber-500/25' : 'bg-emerald-500/10 border-emerald-500/20'}`} title={METRIC_TOOLTIPS.Cycles}>
+                      <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5 truncate">Cycles</div>
                       <div className={`text-base font-bold font-mono-ui tabular-nums leading-tight ${cycles > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{cycles}</div>
                     </div>
-                    <div className={`rounded-lg p-2 border text-center min-w-0 ${
+                    <div className={`rounded-lg p-2.5 border text-center min-w-0 ${
                       instability >= 70 ? 'bg-amber-500/10 border-amber-500/25' : instability >= 40 ? 'bg-blue-500/10 border-blue-500/20' : 'bg-emerald-500/10 border-emerald-500/20'
                     }`} title={METRIC_TOOLTIPS.Instability}>
-                      <div className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5 truncate">Instab.</div>
+                      <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5 truncate">Instab.</div>
                       <div className="text-base font-bold text-gray-900 dark:text-gray-100 font-mono-ui tabular-nums leading-tight">{instability.toFixed(0)}%</div>
                     </div>
-                    <div className={`rounded-lg p-2 border text-center min-w-0 ${
+                    <div className={`rounded-lg p-2.5 border text-center min-w-0 ${
                       depth === 0 ? 'bg-emerald-500/10 border-emerald-500/20' : depth <= 2 ? 'bg-blue-500/10 border-blue-500/20' : 'bg-violet-500/10 border-violet-500/20'
                     }`} title={METRIC_TOOLTIPS.Depth}>
-                      <div className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5 truncate">Depth</div>
+                      <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5 truncate">Depth</div>
                       <div className="text-base font-bold text-gray-900 dark:text-gray-100 font-mono-ui tabular-nums leading-tight">{depth}</div>
                     </div>
-                    <div className="rounded-lg p-2 border border-sky-500/20 bg-sky-500/10 text-center min-w-0" title={METRIC_TOOLTIPS.Closeness}>
-                      <div className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5 truncate">Close.</div>
+                    <div className="rounded-lg p-2.5 border border-sky-500/20 bg-sky-500/10 text-center min-w-0" title={METRIC_TOOLTIPS.Closeness}>
+                      <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5 truncate">Close.</div>
                       <div className="text-xs font-bold text-sky-600 dark:text-sky-400 font-mono-ui leading-tight">{((selectedNode.closeness ?? 0) * 100).toFixed(1)}%</div>
                     </div>
-                    <div className="rounded-lg p-2 border border-fuchsia-500/20 bg-fuchsia-500/10 text-center min-w-0" title={METRIC_TOOLTIPS.Eigenvector}>
-                      <div className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5 truncate">Eigen.</div>
+                    <div className="rounded-lg p-2.5 border border-fuchsia-500/20 bg-fuchsia-500/10 text-center min-w-0" title={METRIC_TOOLTIPS.Eigenvector}>
+                      <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5 truncate">Eigen.</div>
                       <div className="text-xs font-bold text-fuchsia-600 dark:text-fuchsia-400 font-mono-ui leading-tight truncate">{(selectedNode.eigenvector ?? 0).toFixed(3)}</div>
                     </div>
-                    <div className="rounded-lg p-2 border border-amber-500/20 bg-amber-500/10 text-center min-w-0" title={METRIC_TOOLTIPS.External}>
-                      <div className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5 truncate">Ext.</div>
+                    <div className="rounded-lg p-2.5 border border-amber-500/20 bg-amber-500/10 text-center min-w-0" title={METRIC_TOOLTIPS.External}>
+                      <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5 truncate">Ext.</div>
                       <div className="text-xs font-bold text-amber-600 dark:text-amber-400 font-mono-ui leading-tight">{((selectedNode.external_ratio ?? 0) * 100).toFixed(0)}%</div>
                     </div>
                   </>
@@ -382,30 +390,30 @@ export function MetricsPanel() {
               })()}
             </div>
 
-            {/* Phase 3: Importance as colored progress cards + summary badge */}
+            {/* Importance: progress cards + summary badge */}
             <div className="space-y-3 pt-1 min-w-0">
               <div className="flex items-center justify-between gap-2 min-w-0">
-                <span className="text-[11px] font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 truncate">Importance</span>
+                <span className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 truncate">Importance</span>
                 {(selectedNode.pagerank ?? 0) >= 0.05 && (
-                  <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
+                  <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
                     <Zap className="w-2.5 h-2.5" aria-hidden /> High impact
                   </span>
                 )}
               </div>
               <div className="space-y-3 min-w-0">
-                <div className="rounded-lg p-2 border border-indigo-500/20 bg-indigo-500/5 min-w-0" title={METRIC_TOOLTIPS.PageRank}>
+                <div className="rounded-xl p-3 border border-gray-200 dark:border-white/10 bg-white/5 min-w-0" title={METRIC_TOOLTIPS.PageRank}>
                   <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
-                    <span className="text-[11px] font-medium text-indigo-400 truncate">PageRank</span>
-                    <span className="text-[11px] font-mono font-semibold text-gray-100 tabular-nums shrink-0">{(selectedNode.pagerank * 100).toFixed(2)}%</span>
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400 truncate">PageRank</span>
+                    <span className="text-xs font-mono font-semibold text-gray-900 dark:text-white tabular-nums shrink-0">{(selectedNode.pagerank * 100).toFixed(2)}%</span>
                   </div>
                   <div className="w-full bg-white/10 dark:bg-black/20 rounded-full h-2 overflow-hidden">
                     <div className="h-2 rounded-full transition-all duration-500 bg-gradient-to-r from-indigo-500 to-violet-500" style={{ width: `${Math.min(100, selectedNode.pagerank * 100)}%` }} />
                   </div>
                 </div>
-                <div className="rounded-lg p-2 border border-violet-500/20 bg-violet-500/5 min-w-0" title={METRIC_TOOLTIPS.Betweenness}>
+                <div className="rounded-xl p-3 border border-gray-200 dark:border-white/10 bg-white/5 min-w-0" title={METRIC_TOOLTIPS.Betweenness}>
                   <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
-                    <span className="text-[11px] font-medium text-violet-400 truncate">Betweenness</span>
-                    <span className="text-[11px] font-mono font-semibold text-gray-100 tabular-nums shrink-0">{(selectedNode.betweenness * 100).toFixed(2)}%</span>
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400 truncate">Betweenness</span>
+                    <span className="text-xs font-mono font-semibold text-gray-900 dark:text-white tabular-nums shrink-0">{(selectedNode.betweenness * 100).toFixed(2)}%</span>
                   </div>
                   <div className="w-full bg-white/10 dark:bg-black/20 rounded-full h-2 overflow-hidden">
                     <div className="h-2 rounded-full transition-all duration-500 bg-gradient-to-r from-violet-500 to-purple-500" style={{ width: `${Math.min(100, selectedNode.betweenness * 100)}%` }} />
@@ -428,12 +436,12 @@ export function MetricsPanel() {
                       {typeStyle.label}
                     </span>
                     {externalKindLabel && (
-                      <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
                         ({externalKindLabel})
                       </span>
                     )}
                     {selectedNode.node_type === 'external' && selectedNode.version && (
-                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-white/10" title="Installed version">
+                      <span className="text-xs font-mono px-2 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-white/10" title="Installed version">
                         v{selectedNode.version}
                       </span>
                     )}
@@ -500,14 +508,14 @@ export function MetricsPanel() {
             )}
           </div>
         ) : (
-          <div className="space-y-4 overflow-y-auto min-h-0 pr-1 -mr-1" aria-label="Project metrics content">
-            {/* Empty folder state: folder selected but no modules matched */}
+          <div className="space-y-5 overflow-y-auto min-h-0 pr-1 -mr-1" aria-label="Project metrics content">
+            {/* Empty folder state */}
             {display.isFolder && display.total_files === 0 && (
-              <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 dark:bg-amber-500/10 p-4 min-w-0">
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 dark:bg-amber-500/10 p-4 min-w-0 backdrop-blur-xl">
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
                   No modules in this folder
                 </p>
-                <p className="text-xs text-amber-700 dark:text-amber-300/90 mt-1">
+                <p className="text-xs text-amber-700 dark:text-amber-300/90 mt-1 leading-relaxed">
                   <span title={display.folderPath ?? ''}>
                     {display.folderPath ? <> &quot;{folderDisplayName(display.folderPath)}&quot; has no analyzed modules.</> : 'This folder has no analyzed modules.'}
                   </span>
@@ -518,7 +526,7 @@ export function MetricsPanel() {
             )}
 
             {/* Summary strip */}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400 font-medium min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400 font-medium min-w-0">
               {display.isFolder && (
                 <>
                   <Folder className="w-3.5 h-3.5 text-teal-500 dark:text-teal-400 shrink-0" aria-hidden />
@@ -547,37 +555,37 @@ export function MetricsPanel() {
               )}
             </div>
 
-            {/* Internal / Folder card */}
-            <div className="rounded-xl border border-indigo-500/25 bg-indigo-500/5 dark:bg-indigo-500/5 p-4 space-y-3 min-w-0">
-              <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-indigo-400 dark:text-indigo-400 shrink-0" title={display.isFolder ? (display.folderPath ?? '') : undefined}>
-                {display.isFolder ? <Folder className="w-4 h-4" aria-hidden /> : <FileCode className="w-4 h-4" aria-hidden />}
+            {/* Internal / Folder card — same card style as InsightsPanel */}
+            <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 dark:bg-indigo-500/5 p-4 space-y-4 min-w-0 backdrop-blur-xl">
+              <h3 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 shrink-0" title={display.isFolder ? (display.folderPath ?? '') : undefined}>
+                {display.isFolder ? <Folder className="w-4 h-4 text-indigo-500 dark:text-indigo-400" aria-hidden /> : <FileCode className="w-4 h-4 text-indigo-500 dark:text-indigo-400" aria-hidden />}
                 {display.isFolder ? `Folder: ${folderDisplayName(display.folderPath) || (display.folderPath ?? '')}` : 'Internal'}
               </h3>
-              <div className="grid grid-cols-2 gap-2 min-w-0">
-                <div className="min-h-[72px] flex flex-col items-center justify-center p-2.5 rounded-lg border border-indigo-500/20 bg-white/5 dark:bg-white/5 text-center">
-                  <span className="text-lg font-bold text-white font-mono-ui tabular-nums leading-tight">{display.total_files}</span>
-                  <span className="text-[11px] text-slate-500 mt-1 leading-tight">Files</span>
+              <div className="grid grid-cols-2 gap-3 min-w-0">
+                <div className="min-h-[72px] flex flex-col items-center justify-center p-3 rounded-lg border border-gray-200 dark:border-white/10 bg-white/5 dark:bg-white/5 text-center">
+                  <span className="text-lg font-bold text-gray-900 dark:text-white font-mono-ui tabular-nums leading-tight">{display.total_files}</span>
+                  <span className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-tight">Files</span>
                 </div>
-                <div className="min-h-[72px] flex flex-col items-center justify-center p-2.5 rounded-lg border border-indigo-500/20 bg-white/5 dark:bg-white/5 text-center">
-                  <span className="text-lg font-bold text-white font-mono-ui tabular-nums leading-tight">{display.total_imports}</span>
-                  <span className="text-[11px] text-slate-500 mt-1 leading-tight">Imports</span>
+                <div className="min-h-[72px] flex flex-col items-center justify-center p-3 rounded-lg border border-gray-200 dark:border-white/10 bg-white/5 dark:bg-white/5 text-center">
+                  <span className="text-lg font-bold text-gray-900 dark:text-white font-mono-ui tabular-nums leading-tight">{display.total_imports}</span>
+                  <span className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-tight">Imports</span>
                 </div>
-                <div className="min-h-[72px] flex flex-col items-center justify-center p-2.5 rounded-lg border border-indigo-500/20 bg-white/5 dark:bg-white/5 text-center">
-                  <span className="text-lg font-bold text-white font-mono-ui tabular-nums leading-tight">{display.max_import_depth}</span>
-                  <span className="text-[11px] text-slate-500 mt-1 leading-tight">Max Depth</span>
+                <div className="min-h-[72px] flex flex-col items-center justify-center p-3 rounded-lg border border-gray-200 dark:border-white/10 bg-white/5 dark:bg-white/5 text-center">
+                  <span className="text-lg font-bold text-gray-900 dark:text-white font-mono-ui tabular-nums leading-tight">{display.max_import_depth}</span>
+                  <span className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-tight">Max Depth</span>
                 </div>
-                <div className="min-h-[72px] flex flex-col items-center justify-center p-2.5 rounded-lg border border-indigo-500/20 bg-white/5 dark:bg-white/5 text-center">
-                  <span className="text-lg font-bold text-white font-mono-ui tabular-nums leading-tight">{((display.graph_density ?? 0) * 100).toFixed(1)}%</span>
-                  <span className="text-[11px] text-slate-500 mt-1 leading-tight">Density</span>
+                <div className="min-h-[72px] flex flex-col items-center justify-center p-3 rounded-lg border border-gray-200 dark:border-white/10 bg-white/5 dark:bg-white/5 text-center">
+                  <span className="text-lg font-bold text-gray-900 dark:text-white font-mono-ui tabular-nums leading-tight">{((display.graph_density ?? 0) * 100).toFixed(1)}%</span>
+                  <span className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-tight">Density</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 min-w-0">
+              <div className="grid grid-cols-2 gap-3 min-w-0">
                 {display.internal_edges != null && (
-                  <div className="p-2.5 rounded-lg border border-indigo-500/20 bg-white/5 flex items-center gap-2 min-w-0">
-                    <Network className="w-5 h-5 text-indigo-400 shrink-0" aria-hidden />
+                  <div className="p-3 rounded-lg border border-gray-200 dark:border-white/10 bg-white/5 flex items-center gap-2 min-w-0">
+                    <Network className="w-5 h-5 text-indigo-500 dark:text-indigo-400 shrink-0" aria-hidden />
                     <div className="min-w-0 flex-1">
-                      <div className="text-[10px] font-medium text-slate-500 truncate">Internal Edges</div>
-                      <div className="text-sm font-bold text-white font-mono-ui tabular-nums">{display.internal_edges}</div>
+                      <div className="text-xs font-medium text-gray-500 dark:text-slate-400 truncate">Internal Edges</div>
+                      <div className="text-sm font-bold text-gray-900 dark:text-white font-mono-ui tabular-nums">{display.internal_edges}</div>
                     </div>
                   </div>
                 )}
@@ -585,14 +593,14 @@ export function MetricsPanel() {
                   <button
                     type="button"
                     onClick={() => setShowEntryPoints(true)}
-                    className="p-2.5 rounded-lg border border-indigo-500/20 bg-white/5 flex items-center gap-2 min-w-0 text-left hover:bg-emerald-500/10 hover:border-emerald-500/25 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    className="p-3 rounded-lg border border-gray-200 dark:border-white/10 bg-white/5 flex items-center gap-2 min-w-0 text-left hover:bg-emerald-500/10 hover:border-emerald-500/25 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                     aria-label="View entry point files"
                     title="View entry point files"
                   >
-                    <Box className="w-5 h-5 text-emerald-400 shrink-0" aria-hidden />
+                    <Box className="w-5 h-5 text-emerald-500 dark:text-emerald-400 shrink-0" aria-hidden />
                     <div className="min-w-0 flex-1">
-                      <div className="text-[10px] font-medium text-slate-500 truncate">Entry Points</div>
-                      <div className="text-sm font-bold text-white font-mono-ui tabular-nums">{display.entry_points_count}</div>
+                      <div className="text-xs font-medium text-gray-500 dark:text-slate-400 truncate">Entry Points</div>
+                      <div className="text-sm font-bold text-gray-900 dark:text-white font-mono-ui tabular-nums">{display.entry_points_count}</div>
                     </div>
                   </button>
                 )}
@@ -600,17 +608,17 @@ export function MetricsPanel() {
                   <button
                     type="button"
                     onClick={() => setSelectedNode(display.largest_file_node!)}
-                    className="p-2.5 rounded-lg border border-indigo-500/20 bg-white/5 flex items-center gap-2 min-w-0 text-left hover:bg-teal-500/10 hover:border-teal-500/25 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                    className="p-3 rounded-lg border border-gray-200 dark:border-white/10 bg-white/5 flex items-center gap-2 min-w-0 text-left hover:bg-teal-500/10 hover:border-teal-500/25 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/50"
                     aria-label="Select largest file in graph"
                     title="Select largest file in graph"
                   >
-                    <FileStack className="w-5 h-5 text-teal-400 shrink-0" aria-hidden />
+                    <FileStack className="w-5 h-5 text-teal-500 dark:text-teal-400 shrink-0" aria-hidden />
                     <div className="min-w-0 flex-1">
-                      <div className="text-[10px] font-medium text-slate-500 truncate">Largest File</div>
-                      <div className="text-xs font-semibold text-white truncate" title={display.largest_file_node.file_path}>
+                      <div className="text-xs font-medium text-gray-500 dark:text-slate-400 truncate">Largest File</div>
+                      <div className="text-xs font-semibold text-gray-900 dark:text-white truncate" title={display.largest_file_node.file_path}>
                         {(display.largest_file_node.file_path ?? '').split(/[/\\]/).pop() ?? display.largest_file_node.label}
                       </div>
-                      <div className="text-[10px] font-mono text-slate-400 tabular-nums">
+                      <div className="text-xs font-mono text-gray-500 dark:text-slate-400 tabular-nums">
                         {display.largest_file_node.size_bytes != null && display.largest_file_node.size_bytes > 0
                           ? formatFileSize(display.largest_file_node.size_bytes)
                           : display.largest_file_node.line_count != null
@@ -620,73 +628,73 @@ export function MetricsPanel() {
                     </div>
                   </button>
                 )}
-                <div className="p-2.5 rounded-lg border border-indigo-500/20 bg-white/5 flex items-center gap-2 min-w-0">
-                  <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" aria-hidden />
+                <div className="p-3 rounded-lg border border-gray-200 dark:border-white/10 bg-white/5 flex items-center gap-2 min-w-0">
+                  <AlertCircle className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0" aria-hidden />
                   <div className="min-w-0 flex-1">
-                    <div className="text-[10px] font-medium text-slate-500 truncate">Cycles</div>
-                    <div className="text-sm font-bold text-white font-mono-ui tabular-nums">{display.total_cycles}</div>
+                    <div className="text-xs font-medium text-gray-500 dark:text-slate-400 truncate">Cycles</div>
+                    <div className="text-sm font-bold text-gray-900 dark:text-white font-mono-ui tabular-nums">{display.total_cycles}</div>
                   </div>
                 </div>
                 {(display.avg_cycle_length != null && display.avg_cycle_length > 0) && (
-                  <div className="p-2.5 rounded-lg border border-indigo-500/20 bg-white/5 min-w-0">
-                    <div className="text-[10px] font-medium text-slate-500 truncate">Avg / Max Cycle</div>
-                    <div className="text-sm font-bold text-white font-mono-ui tabular-nums leading-tight">
+                  <div className="p-3 rounded-lg border border-gray-200 dark:border-white/10 bg-white/5 min-w-0">
+                    <div className="text-xs font-medium text-gray-500 dark:text-slate-400 truncate">Avg / Max Cycle</div>
+                    <div className="text-sm font-bold text-gray-900 dark:text-white font-mono-ui tabular-nums leading-tight">
                       {display.avg_cycle_length?.toFixed(1)} / {display.max_cycle_length ?? 0}
                     </div>
                   </div>
                 )}
               </div>
               {display.largest_scc_size != null && display.largest_scc_size > 0 && (
-                <div className="p-2.5 rounded-lg border border-amber-500/25 bg-amber-500/10 flex items-center gap-2 min-w-0">
-                  <Layers className="w-5 h-5 text-amber-500 shrink-0" aria-hidden />
+                <div className="p-3 rounded-lg border border-amber-500/20 bg-amber-500/10 flex items-center gap-2 min-w-0 backdrop-blur-xl">
+                  <Layers className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0" aria-hidden />
                   <div className="min-w-0 flex-1">
-                    <div className="text-[10px] font-medium text-amber-600 dark:text-amber-400 truncate">Largest SCC</div>
-                    <div className="text-sm font-bold text-amber-700 dark:text-amber-300 font-mono-ui">{display.largest_scc_size} modules</div>
+                    <div className="text-xs font-medium text-amber-700 dark:text-amber-400 truncate">Largest SCC</div>
+                    <div className="text-sm font-bold text-amber-800 dark:text-amber-300 font-mono-ui">{display.largest_scc_size} modules</div>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* External card: folder view shows Built-in vs Packages separately */}
-            <div className="rounded-xl border border-sky-500/25 bg-sky-500/5 dark:bg-sky-500/5 p-4 space-y-3 min-w-0">
-              <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-sky-400 dark:text-sky-400 shrink-0">
-                <Package className="w-4 h-4" aria-hidden />
+            {/* External card */}
+            <div className="rounded-xl border border-gray-200 dark:border-white/5 bg-white/5 dark:bg-white/5 p-4 space-y-4 min-w-0 backdrop-blur-xl">
+              <h3 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 shrink-0">
+                <Package className="w-4 h-4 text-sky-500 dark:text-sky-400" aria-hidden />
                 External
               </h3>
               {display.isFolder && (display.external_stdlib_count != null || display.external_package_count != null) ? (
-                <div className="grid grid-cols-2 gap-2 min-w-0">
-                  <div className="min-h-[72px] flex flex-col items-center justify-center p-2.5 rounded-lg border border-slate-500/20 bg-white/5 dark:bg-white/5 text-center">
-                    <span className="text-lg font-bold text-white font-mono-ui tabular-nums leading-tight">
+                <div className="grid grid-cols-2 gap-3 min-w-0">
+                  <div className="min-h-[72px] flex flex-col items-center justify-center p-3 rounded-lg border border-gray-200 dark:border-white/10 bg-white/5 dark:bg-white/5 text-center">
+                    <span className="text-lg font-bold text-gray-900 dark:text-white font-mono-ui tabular-nums leading-tight">
                       {display.external_stdlib_count ?? 0}
                     </span>
-                    <span className="text-[11px] text-slate-500 mt-1 leading-tight">Built-in</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-tight">Built-in</span>
                   </div>
-                  <div className="min-h-[72px] flex flex-col items-center justify-center p-2.5 rounded-lg border border-sky-500/20 bg-white/5 dark:bg-white/5 text-center">
-                    <span className="text-lg font-bold text-white font-mono-ui tabular-nums leading-tight">
+                  <div className="min-h-[72px] flex flex-col items-center justify-center p-3 rounded-lg border border-gray-200 dark:border-white/10 bg-white/5 dark:bg-white/5 text-center">
+                    <span className="text-lg font-bold text-gray-900 dark:text-white font-mono-ui tabular-nums leading-tight">
                       {display.external_package_count ?? 0}
                     </span>
-                    <span className="text-[11px] text-slate-500 mt-1 leading-tight">Packages</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-tight">Packages</span>
                   </div>
-                  <div className="col-span-2 min-h-[56px] flex flex-col items-center justify-center p-2.5 rounded-lg border border-sky-500/20 bg-white/5 text-center">
-                    <span className="text-sm font-bold text-white font-mono-ui tabular-nums leading-tight">
+                  <div className="col-span-2 min-h-[56px] flex flex-col items-center justify-center p-3 rounded-lg border border-gray-200 dark:border-white/10 bg-white/5 text-center">
+                    <span className="text-sm font-bold text-gray-900 dark:text-white font-mono-ui tabular-nums leading-tight">
                       {((display.external_edges_ratio ?? 0) * 100).toFixed(1)}%
                     </span>
-                    <span className="text-[11px] text-slate-500 mt-1 leading-tight">External edge ratio</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-tight">External edge ratio</span>
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2 min-w-0">
-                  <div className="min-h-[72px] flex flex-col items-center justify-center p-2.5 rounded-lg border border-sky-500/20 bg-white/5 dark:bg-white/5 text-center">
-                    <span className="text-lg font-bold text-white font-mono-ui tabular-nums leading-tight">
+                <div className="grid grid-cols-2 gap-3 min-w-0">
+                  <div className="min-h-[72px] flex flex-col items-center justify-center p-3 rounded-lg border border-gray-200 dark:border-white/10 bg-white/5 dark:bg-white/5 text-center">
+                    <span className="text-lg font-bold text-gray-900 dark:text-white font-mono-ui tabular-nums leading-tight">
                       {display.external_node_count ?? 0}
                     </span>
-                    <span className="text-[11px] text-slate-500 mt-1 leading-tight">Packages</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-tight">Packages</span>
                   </div>
-                  <div className="min-h-[72px] flex flex-col items-center justify-center p-2.5 rounded-lg border border-sky-500/20 bg-white/5 dark:bg-white/5 text-center">
-                    <span className="text-lg font-bold text-white font-mono-ui tabular-nums leading-tight">
+                  <div className="min-h-[72px] flex flex-col items-center justify-center p-3 rounded-lg border border-gray-200 dark:border-white/10 bg-white/5 dark:bg-white/5 text-center">
+                    <span className="text-lg font-bold text-gray-900 dark:text-white font-mono-ui tabular-nums leading-tight">
                       {((display.external_edges_ratio ?? 0) * 100).toFixed(1)}%
                     </span>
-                    <span className="text-[11px] text-slate-500 mt-1 leading-tight">Edge Ratio</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400 mt-1 leading-tight">Edge Ratio</span>
                   </div>
                 </div>
               )}
@@ -694,7 +702,7 @@ export function MetricsPanel() {
                 <button
                   type="button"
                   onClick={() => setShowExternalPackages(true)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-sky-500/30 bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 dark:text-sky-300 font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500/50 min-w-0"
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-sky-500/25 bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500/50 min-w-0"
                   aria-label="View external packages details"
                 >
                   <ExternalLink className="w-4 h-4 shrink-0" aria-hidden />
@@ -703,47 +711,47 @@ export function MetricsPanel() {
               )}
             </div>
 
-            {/* Statistics */}
+            {/* Statistics — same card style as InsightsPanel recommendations */}
             {display.statistics && (
-              <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 min-w-0">
+              <div className="p-4 bg-blue-500/10 rounded-xl border border-blue-500/20 min-w-0 backdrop-blur-xl">
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-6 h-6 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-                    <TrendingUp className="w-3.5 h-3.5 text-blue-500" />
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                    <TrendingUp className="w-4 h-4 text-blue-500 dark:text-blue-400" />
                   </div>
-                  <span className="text-xs font-semibold text-blue-300 truncate">Statistics</span>
+                  <span className="text-xs font-semibold text-gray-900 dark:text-blue-300 truncate">Statistics</span>
                 </div>
-                <div className="space-y-1.5 text-xs text-blue-300/90 min-w-0">
+                <div className="space-y-2 text-xs text-gray-700 dark:text-gray-300 min-w-0">
                   <div className="flex justify-between gap-2">
-                    <span className="text-blue-300/70 truncate shrink-0">Avg imports/file</span>
-                    <span className="font-semibold font-mono-ui tabular-nums shrink-0">
+                    <span className="text-gray-500 dark:text-gray-400 truncate shrink-0">Avg imports/file</span>
+                    <span className="font-semibold font-mono-ui tabular-nums shrink-0 text-gray-900 dark:text-white">
                       {Number(display.statistics.avg_imports_per_file).toFixed(1)}
                     </span>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <span className="text-blue-300/70 truncate shrink-0">Max imports</span>
-                    <span className="font-semibold font-mono-ui tabular-nums shrink-0">{display.statistics.max_imports_in_file}</span>
+                    <span className="text-gray-500 dark:text-gray-400 truncate shrink-0">Max imports</span>
+                    <span className="font-semibold font-mono-ui tabular-nums shrink-0 text-gray-900 dark:text-white">{display.statistics.max_imports_in_file}</span>
                   </div>
                   <div className="min-w-0">
-                    <div className="text-blue-300/70 text-[11px] mb-0.5">Most imported</div>
+                    <div className="text-gray-500 dark:text-gray-400 text-xs mb-0.5">Most imported</div>
                     <div className="flex items-baseline gap-2 min-w-0">
-                      <span className="font-mono text-blue-200 truncate" title={display.statistics.most_imported_module}>
+                      <span className="font-mono text-gray-900 dark:text-white truncate" title={display.statistics.most_imported_module}>
                         {(display.statistics.most_imported_module ?? '').split(/[/\\]/).pop() ?? display.statistics.most_imported_module}
                       </span>
-                      <span className="font-semibold font-mono-ui tabular-nums text-blue-200 shrink-0">{display.statistics.most_imported_count}×</span>
+                      <span className="font-semibold font-mono-ui tabular-nums text-gray-900 dark:text-white shrink-0">{display.statistics.most_imported_count}×</span>
                     </div>
                   </div>
                 </div>
                 {(display.statistics.hub_modules?.length ?? 0) > 0 && (
                   <div className="mt-3 pt-2 border-t border-blue-500/20 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5 text-[11px] font-medium text-blue-300/80 truncate">
+                    <div className="flex items-center gap-2 mb-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 truncate">
                       <Zap className="w-3 h-3 shrink-0" aria-hidden />
                       Hub modules
                     </div>
-                    <ul className="space-y-1 text-[11px] font-mono text-blue-300/90 min-w-0">
+                    <ul className="space-y-1 text-xs font-mono text-gray-700 dark:text-gray-300 min-w-0">
                       {display.statistics.hub_modules!.slice(0, 5).map(([module, score], i) => (
                         <li key={i} className="flex justify-between gap-2">
                           <span className="truncate" title={module}>{module.split(/[/\\]/).pop() ?? module}</span>
-                          <span className="font-semibold shrink-0 tabular-nums">{(score * 100).toFixed(1)}%</span>
+                          <span className="font-semibold shrink-0 tabular-nums text-gray-900 dark:text-white">{(score * 100).toFixed(1)}%</span>
                         </li>
                       ))}
                     </ul>
@@ -751,15 +759,15 @@ export function MetricsPanel() {
                 )}
                 {(display.statistics.top_importers?.length ?? 0) > 0 && (
                   <div className="mt-3 pt-2 border-t border-blue-500/20 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5 text-[11px] font-medium text-blue-300/80 truncate">
+                    <div className="flex items-center gap-2 mb-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 truncate">
                       <ArrowUpCircle className="w-3 h-3 shrink-0" aria-hidden />
                       Top importers
                     </div>
-                    <ul className="space-y-1 text-[11px] font-mono text-blue-300/90 min-w-0">
+                    <ul className="space-y-1 text-xs font-mono text-gray-700 dark:text-gray-300 min-w-0">
                       {display.statistics.top_importers!.slice(0, 5).map((item, i) => (
                         <li key={i} className="flex justify-between gap-2">
                           <span className="truncate" title={item.module}>{item.module.split(/[/\\]/).pop() ?? item.module}</span>
-                          <span className="font-semibold shrink-0">{item.count}</span>
+                          <span className="font-semibold shrink-0 text-gray-900 dark:text-white">{item.count}</span>
                         </li>
                       ))}
                     </ul>
@@ -767,15 +775,15 @@ export function MetricsPanel() {
                 )}
                 {(display.statistics.top_imported?.length ?? 0) > 0 && (
                   <div className="mt-2 pt-2 border-t border-blue-500/20 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5 text-[11px] font-medium text-blue-300/80 truncate">
+                    <div className="flex items-center gap-2 mb-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 truncate">
                       <ArrowDownCircle className="w-3 h-3 shrink-0" aria-hidden />
                       Top imported
                     </div>
-                    <ul className="space-y-1 text-[11px] font-mono text-blue-300/90 min-w-0">
+                    <ul className="space-y-1 text-xs font-mono text-gray-700 dark:text-gray-300 min-w-0">
                       {display.statistics.top_imported!.slice(0, 5).map((item, i) => (
                         <li key={i} className="flex justify-between gap-2">
                           <span className="truncate" title={item.module}>{item.module.split(/[/\\]/).pop() ?? item.module}</span>
-                          <span className="font-semibold shrink-0">{item.count}</span>
+                          <span className="font-semibold shrink-0 text-gray-900 dark:text-white">{item.count}</span>
                         </li>
                       ))}
                     </ul>
@@ -785,25 +793,25 @@ export function MetricsPanel() {
             )}
 
             {display.circular_dependencies.length > 0 && (
-              <div className="p-3 bg-red-500/10 rounded-xl border border-red-500/20 min-w-0">
+              <div className="p-4 bg-red-500/10 rounded-xl border border-red-500/20 min-w-0 backdrop-blur-xl">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0">
-                    <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                  <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0">
+                    <AlertCircle className="w-4 h-4 text-red-500 dark:text-red-400" />
                   </div>
-                  <span className="text-xs font-semibold text-red-300 truncate">Circular Deps</span>
+                  <span className="text-xs font-semibold text-gray-900 dark:text-red-300 truncate">Circular Deps</span>
                 </div>
-                <div className="text-[11px] text-red-300/90 mb-2">
+                <div className="text-xs text-gray-700 dark:text-gray-300 mb-2">
                   {display.circular_dependencies.length} cycle(s) detected
                 </div>
                 {display.cycle_details.length > 0 && (
-                  <div className="space-y-1.5 min-w-0">
+                  <div className="space-y-2 min-w-0">
                     {display.cycle_details.slice(0, 3).map((cycle, i) => (
                       <div
                         key={i}
-                        className={`text-[11px] p-2 rounded-lg ${
+                        className={`text-xs p-2.5 rounded-lg ${
                           cycle.severity === 'high'
-                            ? 'bg-red-500/20 text-red-300 border border-red-500/30'
-                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            ? 'bg-red-500/20 text-red-800 dark:text-red-300 border border-red-500/30'
+                            : 'bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30'
                         }`}
                       >
                         {cycle.length} modules — {cycle.severity}
@@ -815,22 +823,22 @@ export function MetricsPanel() {
             )}
 
             {display.isolated_modules.length > 0 && (
-              <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 min-w-0">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <div className="w-6 h-6 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
-                    <Package className="w-3.5 h-3.5 text-amber-500" />
+              <div className="p-4 bg-amber-500/10 rounded-xl border border-amber-500/20 min-w-0 backdrop-blur-xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center shrink-0">
+                    <Package className="w-4 h-4 text-amber-500 dark:text-amber-400" />
                   </div>
-                  <span className="text-xs font-semibold text-amber-300 truncate">Isolated</span>
+                  <span className="text-xs font-semibold text-gray-900 dark:text-amber-300 truncate">Isolated</span>
                 </div>
-                <div className="text-[11px] text-amber-300/90 mb-2">
+                <div className="text-xs text-gray-700 dark:text-gray-300 mb-2">
                   {display.isolated_modules.length} module(s) with no connections
                 </div>
-                <ul className="space-y-1 text-[11px] font-mono text-amber-300/90 min-w-0">
+                <ul className="space-y-1 text-xs font-mono text-gray-700 dark:text-gray-300 min-w-0">
                   {display.isolated_modules.slice(0, 5).map((path, i) => (
                     <li key={i} className="truncate" title={path}>{path.split(/[/\\]/).pop() ?? path}</li>
                   ))}
                   {display.isolated_modules.length > 5 && (
-                    <li className="text-amber-300/70 italic">+{display.isolated_modules.length - 5} more</li>
+                    <li className="text-gray-500 dark:text-gray-400 italic">+{display.isolated_modules.length - 5} more</li>
                   )}
                 </ul>
               </div>
@@ -839,16 +847,16 @@ export function MetricsPanel() {
         )}
 
         {analysis.warnings.length > 0 && !selectedNode && (
-          <div className="pt-3 border-t border-white/10 min-w-0">
-            <div className="text-[11px] font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2 truncate">Warnings</div>
-            <div className="space-y-1.5 max-h-36 overflow-y-auto min-w-0">
+          <div className="pt-4 border-t border-gray-200 dark:border-white/10 min-w-0">
+            <div className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2 truncate">Warnings</div>
+            <div className="space-y-2 max-h-36 overflow-y-auto min-w-0">
               {analysis.warnings.slice(0, 5).map((warning, i) => (
-                <div key={i} className="text-[11px] text-amber-300 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20 break-words">
+                <div key={i} className="text-xs text-amber-800 dark:text-amber-200 bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20 break-words">
                   {warning}
                 </div>
               ))}
               {analysis.warnings.length > 5 && (
-                <div className="text-[11px] text-slate-500 italic">
+                <div className="text-xs text-gray-500 dark:text-slate-400 italic">
                   +{analysis.warnings.length - 5} more
                 </div>
               )}
