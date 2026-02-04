@@ -1,9 +1,12 @@
 import { useState, useMemo } from 'react'
-import { AlertCircle, Package, FileCode, Layers, TrendingUp, Eye, ArrowDownCircle, ArrowUpCircle, Network, Box, Copy, Check, Zap, ExternalLink, Folder } from 'lucide-react'
+import { AlertCircle, Package, FileCode, Layers, TrendingUp, Eye, ArrowDownCircle, ArrowUpCircle, Network, Box, Copy, Check, Zap, ExternalLink, Folder, FileStack } from 'lucide-react'
 import { useGraphStore } from '@/stores/graphStore'
 import { computeFolderMetrics } from '@/lib/folderMetrics'
 import { FilePreviewModal } from './FilePreviewModal'
 import { ExternalPackagesModal } from './ExternalPackagesModal'
+import { ImportRelationsModal } from './ImportRelationsModal'
+import { ImportListModal } from './ImportListModal'
+import { EntryPointsModal } from './EntryPointsModal'
 import type { Node, GraphMetrics, CycleDetail } from '@/types/api'
 import type { FolderMetrics } from '@/lib/folderMetrics'
 
@@ -51,6 +54,13 @@ function folderDisplayName(path: string | null): string {
   return parts.length > 0 ? parts[parts.length - 1]! : path
 }
 
+/** Format file size for display (e.g. "1.2 MB", "500 B"). */
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 // Tooltips for module metric labels (accessibility + discoverability)
 const METRIC_TOOLTIPS: Record<string, string> = {
   'Imports (fan-out)': 'Number of modules this file imports (outgoing edges).',
@@ -69,6 +79,10 @@ export function MetricsPanel() {
   const { analysis, selectedNode, setSelectedNode, selectedFolderPath } = useGraphStore()
   const [showPreview, setShowPreview] = useState(false)
   const [showExternalPackages, setShowExternalPackages] = useState(false)
+  const [showImportRelations, setShowImportRelations] = useState(false)
+  const [showOutgoingModal, setShowOutgoingModal] = useState(false)
+  const [showIncomingModal, setShowIncomingModal] = useState(false)
+  const [showEntryPoints, setShowEntryPoints] = useState(false)
   const [pathCopied, setPathCopied] = useState(false)
 
   const folderMetrics = useMemo(
@@ -78,6 +92,26 @@ export function MetricsPanel() {
         : null,
     [analysis, selectedFolderPath]
   )
+
+  /** Project-level largest file (internal nodes only). */
+  const projectLargestFile = useMemo((): Node | null => {
+    if (!analysis) return null
+    const internal = analysis.nodes.filter((n) => n.node_type !== 'external')
+    const withSize = internal.filter(
+      (n) =>
+        n.size_bytes != null &&
+        (n.size_bytes > 0 || (n.line_count != null && n.line_count > 0))
+    )
+    if (withSize.length === 0) return null
+    return [...withSize].sort((a, b) => {
+      const sa = a.size_bytes ?? 0
+      const sb = b.size_bytes ?? 0
+      if (sb !== sa) return sb - sa
+      const la = a.line_count ?? 0
+      const lb = b.line_count ?? 0
+      return lb - la
+    })[0] ?? null
+  }, [analysis])
 
   /** Single source for the metrics view: folder metrics when a folder is selected, else project metrics. */
   const display = useMemo((): {
@@ -101,6 +135,7 @@ export function MetricsPanel() {
     isolated_modules: string[]
     isFolder: boolean
     folderPath: string | null
+    largest_file_node: Node | null
   } => {
     if (folderMetrics) {
       return {
@@ -124,6 +159,7 @@ export function MetricsPanel() {
         isolated_modules: folderMetrics.isolated_modules,
         isFolder: true,
         folderPath: selectedFolderPath,
+        largest_file_node: folderMetrics.largest_file_node,
       }
     }
     const { metrics } = analysis!
@@ -148,8 +184,9 @@ export function MetricsPanel() {
       isolated_modules: metrics.isolated_modules,
       isFolder: false,
       folderPath: null,
+      largest_file_node: projectLargestFile,
     }
-  }, [analysis, folderMetrics, selectedFolderPath])
+  }, [analysis, folderMetrics, selectedFolderPath, projectLargestFile])
 
   if (!analysis) return null
 
@@ -230,9 +267,15 @@ export function MetricsPanel() {
               </div>
             )}
 
-            {/* Phase 2: Fan-out / Fan-in cards with semantic colors */}
+            {/* Phase 2: Fan-out / Fan-in cards with semantic colors (clickable → open Imports modal) */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gradient-to-br from-indigo-500/15 to-indigo-600/10 rounded-xl p-3 border border-indigo-500/25 flex items-center gap-2 min-w-0" title={METRIC_TOOLTIPS['Imports (fan-out)']}>
+              <button
+                type="button"
+                onClick={() => setShowOutgoingModal(true)}
+                className="bg-gradient-to-br from-indigo-500/15 to-indigo-600/10 rounded-xl p-3 border border-indigo-500/25 flex items-center gap-2 min-w-0 text-left hover:from-indigo-500/25 hover:to-indigo-600/20 hover:border-indigo-500/40 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                title={METRIC_TOOLTIPS['Imports (fan-out)']}
+                aria-label="View files this module imports"
+              >
                 <div className="w-9 h-9 rounded-lg bg-indigo-500/20 flex items-center justify-center shrink-0">
                   <ArrowUpCircle className="w-4 h-4 text-indigo-500" aria-hidden />
                 </div>
@@ -240,8 +283,14 @@ export function MetricsPanel() {
                   <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium truncate">Imports (fan-out)</div>
                   <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400 font-mono-ui tabular-nums">{selectedNode.import_count}</div>
                 </div>
-              </div>
-              <div className="bg-gradient-to-br from-violet-500/15 to-violet-600/10 rounded-xl p-3 border border-violet-500/25 flex items-center gap-2 min-w-0" title={METRIC_TOOLTIPS['Imported by (fan-in)']}>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowIncomingModal(true)}
+                className="bg-gradient-to-br from-violet-500/15 to-violet-600/10 rounded-xl p-3 border border-violet-500/25 flex items-center gap-2 min-w-0 text-left hover:from-violet-500/25 hover:to-violet-600/20 hover:border-violet-500/40 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                title={METRIC_TOOLTIPS['Imported by (fan-in)']}
+                aria-label="View files that import this module"
+              >
                 <div className="w-9 h-9 rounded-lg bg-violet-500/20 flex items-center justify-center shrink-0">
                   <ArrowDownCircle className="w-4 h-4 text-violet-500" aria-hidden />
                 </div>
@@ -249,7 +298,7 @@ export function MetricsPanel() {
                   <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium truncate">Imported by (fan-in)</div>
                   <div className="text-lg font-bold text-violet-600 dark:text-violet-400 font-mono-ui tabular-nums">{selectedNode.imported_by_count}</div>
                 </div>
-              </div>
+              </button>
             </div>
 
             {/* Phase 2: Metric cards with semantic colors */}
@@ -343,6 +392,11 @@ export function MetricsPanel() {
                         ({externalKindLabel})
                       </span>
                     )}
+                    {selectedNode.node_type === 'external' && selectedNode.version && (
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-slate-400 border border-gray-200 dark:border-white/10" title="Installed version">
+                        v{selectedNode.version}
+                      </span>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
@@ -365,7 +419,16 @@ export function MetricsPanel() {
               )
             })()}
 
-            {/* Phase 5: Prominent View File CTA */}
+            {/* Phase 5: View imports popup + View File CTA */}
+            <button
+              type="button"
+              onClick={() => setShowImportRelations(true)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 min-w-0"
+              aria-label="View which files this imports and which import this"
+            >
+              <Network className="w-4 h-4 shrink-0" aria-hidden />
+              <span className="truncate">View imports</span>
+            </button>
             {selectedNode.node_type !== 'external' && (
               <button
                 type="button"
@@ -461,13 +524,43 @@ export function MetricsPanel() {
                   </div>
                 )}
                 {display.entry_points_count != null && (
-                  <div className="p-2.5 rounded-lg border border-indigo-500/20 bg-white/5 flex items-center gap-2 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowEntryPoints(true)}
+                    className="p-2.5 rounded-lg border border-indigo-500/20 bg-white/5 flex items-center gap-2 min-w-0 text-left hover:bg-emerald-500/10 hover:border-emerald-500/25 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    aria-label="View entry point files"
+                    title="View entry point files"
+                  >
                     <Box className="w-5 h-5 text-emerald-400 shrink-0" aria-hidden />
                     <div className="min-w-0 flex-1">
                       <div className="text-[10px] font-medium text-slate-500 truncate">Entry Points</div>
                       <div className="text-sm font-bold text-white font-mono-ui tabular-nums">{display.entry_points_count}</div>
                     </div>
-                  </div>
+                  </button>
+                )}
+                {display.largest_file_node != null && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNode(display.largest_file_node!)}
+                    className="p-2.5 rounded-lg border border-indigo-500/20 bg-white/5 flex items-center gap-2 min-w-0 text-left hover:bg-teal-500/10 hover:border-teal-500/25 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/50"
+                    aria-label="Select largest file in graph"
+                    title="Select largest file in graph"
+                  >
+                    <FileStack className="w-5 h-5 text-teal-400 shrink-0" aria-hidden />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[10px] font-medium text-slate-500 truncate">Largest File</div>
+                      <div className="text-xs font-semibold text-white truncate" title={display.largest_file_node.file_path}>
+                        {(display.largest_file_node.file_path ?? '').split(/[/\\]/).pop() ?? display.largest_file_node.label}
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-400 tabular-nums">
+                        {display.largest_file_node.size_bytes != null && display.largest_file_node.size_bytes > 0
+                          ? formatFileSize(display.largest_file_node.size_bytes)
+                          : display.largest_file_node.line_count != null
+                            ? `${display.largest_file_node.line_count} lines`
+                            : '—'}
+                      </div>
+                    </div>
+                  </button>
                 )}
                 <div className="p-2.5 rounded-lg border border-indigo-500/20 bg-white/5 flex items-center gap-2 min-w-0">
                   <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" aria-hidden />
@@ -722,6 +815,56 @@ export function MetricsPanel() {
           onSelectNode={(nodeId) => {
             const node = analysis.nodes.find(n => n.id === nodeId)
             if (node) setSelectedNode(node)
+          }}
+        />
+      )}
+
+      {showImportRelations && selectedNode && (
+        <ImportRelationsModal
+          analysis={analysis}
+          selectedNode={selectedNode}
+          onClose={() => setShowImportRelations(false)}
+          onSelectNode={(node) => {
+            setSelectedNode(node)
+            setShowImportRelations(false)
+          }}
+        />
+      )}
+
+      {showOutgoingModal && selectedNode && (
+        <ImportListModal
+          variant="outgoing"
+          analysis={analysis}
+          selectedNode={selectedNode}
+          onClose={() => setShowOutgoingModal(false)}
+          onSelectNode={(node) => {
+            setSelectedNode(node)
+            setShowOutgoingModal(false)
+          }}
+        />
+      )}
+
+      {showIncomingModal && selectedNode && (
+        <ImportListModal
+          variant="incoming"
+          analysis={analysis}
+          selectedNode={selectedNode}
+          onClose={() => setShowIncomingModal(false)}
+          onSelectNode={(node) => {
+            setSelectedNode(node)
+            setShowIncomingModal(false)
+          }}
+        />
+      )}
+
+      {showEntryPoints && (
+        <EntryPointsModal
+          analysis={analysis}
+          selectedFolderPath={selectedFolderPath}
+          onClose={() => setShowEntryPoints(false)}
+          onSelectNode={(node) => {
+            setSelectedNode(node)
+            setShowEntryPoints(false)
           }}
         />
       )}

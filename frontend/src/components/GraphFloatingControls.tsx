@@ -1,19 +1,22 @@
-import { Search, Layout, Maximize2, Minimize2 } from 'lucide-react'
+import { Search, Layout, Maximize2, Minimize2, Grid3X3, CircleDot } from 'lucide-react'
 import { useGraphStore } from '@/stores/graphStore'
 
 const layouts = [
   { id: 'cola', name: 'Cola' },
   { id: 'circle', name: 'Circle' },
   { id: 'grid', name: 'Grid' },
+  { id: 'grid-tall', name: 'Grid (tall)' },
   { id: 'breadthfirst', name: 'Hierarchy' },
+  { id: 'tree', name: 'Tree' },
   { id: 'concentric', name: 'Concentric' },
 ]
 
 export function GraphFloatingControls() {
-  const { searchQuery, setSearchQuery, layoutName, setLayoutName, isFullScreen, toggleFullScreen } = useGraphStore()
+  const { searchQuery, setSearchQuery, layoutName, setLayoutName, isFullScreen, toggleFullScreen, graphBackground, setGraphBackground } = useGraphStore()
 
   return (
     <div
+      data-skip-export
       className="absolute bottom-5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-xl dark:shadow-black/30"
       role="toolbar"
       aria-label="Graph controls"
@@ -44,6 +47,27 @@ export function GraphFloatingControls() {
             </option>
           ))}
         </select>
+      </div>
+      <div className="h-6 w-px bg-gray-200 dark:bg-white/10" aria-hidden />
+      <div className="flex items-center gap-1.5" role="group" aria-label="Graph background">
+        <button
+          type="button"
+          onClick={() => setGraphBackground('dots')}
+          className={`p-2 rounded-xl border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900 ${graphBackground === 'dots' ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'border-gray-200 dark:border-white/10 bg-gray-100/80 dark:bg-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 text-gray-600 dark:text-slate-400'}`}
+          aria-pressed={graphBackground === 'dots'}
+          title="Dots background"
+        >
+          <CircleDot className="w-4 h-4" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => setGraphBackground('grid')}
+          className={`p-2 rounded-xl border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900 ${graphBackground === 'grid' ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'border-gray-200 dark:border-white/10 bg-gray-100/80 dark:bg-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 text-gray-600 dark:text-slate-400'}`}
+          aria-pressed={graphBackground === 'grid'}
+          title="Blueprint grid background"
+        >
+          <Grid3X3 className="w-4 h-4" aria-hidden />
+        </button>
       </div>
       <div className="h-6 w-px bg-gray-200 dark:bg-white/10" aria-hidden />
       <button

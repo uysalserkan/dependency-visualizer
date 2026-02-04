@@ -8,7 +8,7 @@ from pathlib import Path
 
 from opentelemetry import trace
 
-from app.api.models import AnalysisResult, GraphMetrics
+from app.api.models import AnalysisResult, GraphMetrics, Node
 from app.config import settings
 from app.core.cache import CacheDB
 from app.core.discovery import FileDiscovery
@@ -85,6 +85,53 @@ def _collect_file_contents(
         except (ValueError, OSError, UnicodeDecodeError):
             continue
     return contents
+
+
+# Max file size (bytes) for line counting; larger files get line_count=None to avoid slow reads
+_MAX_LINE_COUNT_SIZE_BYTES = 1024 * 1024  # 1 MB
+
+
+def _enrich_nodes_with_file_stats(project_path: Path, nodes: list[Node]) -> list[Node]:
+    """Enrich internal nodes with size_bytes and line_count from disk.
+
+    External nodes are left unchanged (size_bytes/line_count remain None).
+    Files larger than _MAX_LINE_COUNT_SIZE_BYTES get line_count=None.
+    """
+    project_resolved = Path(project_path).resolve()
+    enriched: list[Node] = []
+    for node in nodes:
+        if node.node_type == "external":
+            enriched.append(node)
+            continue
+        path_str = node.file_path
+        try:
+            path = Path(path_str)
+            resolved = (
+                (project_resolved / path).resolve()
+                if not path.is_absolute()
+                else path.resolve()
+            )
+            if not resolved.is_file():
+                enriched.append(node)
+                continue
+            size_bytes = resolved.stat().st_size
+            line_count: int | None = None
+            if size_bytes <= _MAX_LINE_COUNT_SIZE_BYTES:
+                try:
+                    with open(resolved, "rb") as f:
+                        line_count = sum(1 for _ in f)
+                except (OSError, UnicodeDecodeError):
+                    pass
+            enriched.append(
+                node.model_copy(
+                    update={"size_bytes": size_bytes, "line_count": line_count}
+                )
+            )
+        except (ValueError, OSError):
+            enriched.append(node)
+    return enriched
+
+
 tracer = trace.get_tracer(__name__)
 
 
@@ -236,18 +283,20 @@ class AnalysisService:
 
                         # Create result
                         analysis_id = str(uuid.uuid4())
+                        raw_nodes = graph_builder.get_nodes(
+                            pagerank,
+                            betweenness,
+                            cycle_participation=cycle_participation,
+                            node_depths=node_depths,
+                            closeness_scores=closeness,
+                            eigenvector_scores=eigenvector,
+                            external_ratio_map=external_ratio_map,
+                        )
+                        nodes = _enrich_nodes_with_file_stats(path, raw_nodes)
                         result = AnalysisResult(
                             id=analysis_id,
                             project_path=str(path),
-                            nodes=graph_builder.get_nodes(
-                                pagerank,
-                                betweenness,
-                                cycle_participation=cycle_participation,
-                                node_depths=node_depths,
-                                closeness_scores=closeness,
-                                eigenvector_scores=eigenvector,
-                                external_ratio_map=external_ratio_map,
-                            ),
+                            nodes=nodes,
                             edges=graph_builder.get_edges(),
                             metrics=metrics,
                             warnings=warnings,
@@ -514,7 +563,7 @@ class AnalysisService:
         closeness = analyzer.get_closeness_centrality()
         eigenvector = analyzer.get_eigenvector_centrality()
         external_ratio_map = analyzer.get_external_ratio_per_node()
-        nodes = builder.get_nodes(
+        raw_nodes = builder.get_nodes(
             pagerank,
             betweenness,
             cycle_participation=cycle_participation,
@@ -523,6 +572,7 @@ class AnalysisService:
             eigenvector_scores=eigenvector,
             external_ratio_map=external_ratio_map,
         )
+        nodes = _enrich_nodes_with_file_stats(Path(project_path), raw_nodes)
         edges = builder.get_edges()
 
         analysis_id = str(uuid.uuid4())

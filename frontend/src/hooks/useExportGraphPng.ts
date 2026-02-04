@@ -1,0 +1,105 @@
+import { useCallback } from 'react'
+import { toPng, toJpeg, toCanvas } from 'html-to-image'
+import { useGraphStore } from '@/stores/graphStore'
+import { useThemeStore } from '@/stores/themeStore'
+
+export type ExportImageFormat = 'png' | 'jpeg'
+
+const EXPORT_ERROR_MESSAGE =
+  'Export failed. Try again or use a different zoom.'
+
+function getDimensions(el: HTMLElement): { width: number; height: number } {
+  const rect = el.getBoundingClientRect()
+  let width = Math.floor(rect.width)
+  let height = Math.floor(rect.height)
+  if (width <= 0 || height <= 0) {
+    width = el.offsetWidth || el.scrollWidth || 0
+    height = el.offsetHeight || el.scrollHeight || 0
+  }
+  return { width, height }
+}
+
+function waitForLayout(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve())
+    })
+  })
+}
+
+const baseOptions = (
+  width: number,
+  height: number,
+  backgroundColor: string,
+  filter: (node: HTMLElement) => boolean
+) => ({
+  pixelRatio: 2,
+  width,
+  height,
+  backgroundColor,
+  cacheBust: true,
+  filter,
+})
+
+/** Shared logic for exporting the graph view as PNG or JPEG. */
+export function useExportGraphPng() {
+  const analysis = useGraphStore((s) => s.analysis)
+  const flowWrapperRef = useGraphStore((s) => s.flowWrapperRef)
+  const isDark = useThemeStore((s) => s.isDark)
+
+  const filter = useCallback((node: HTMLElement) => {
+    if (node instanceof Element && node.closest?.('[data-skip-export]')) {
+      return false
+    }
+    return true
+  }, [])
+
+  const exportImage = useCallback(
+    async (format: ExportImageFormat) => {
+      if (!flowWrapperRef || !analysis) return
+      try {
+        let { width, height } = getDimensions(flowWrapperRef)
+        if (width <= 0 || height <= 0) {
+          await waitForLayout()
+          const d = getDimensions(flowWrapperRef)
+          width = d.width
+          height = d.height
+        }
+        if (width <= 0 || height <= 0) {
+          console.warn('Image export: graph container has no visible area')
+          alert(EXPORT_ERROR_MESSAGE)
+          return
+        }
+        const backgroundColor = isDark ? '#0f172a' : '#ffffff'
+        const opts = baseOptions(width, height, backgroundColor, filter)
+        let dataUrl: string
+        try {
+          dataUrl =
+            format === 'jpeg'
+              ? await toJpeg(flowWrapperRef, { ...opts, quality: 0.92 })
+              : await toPng(flowWrapperRef, opts)
+        } catch {
+          // Fallback: toCanvas then toDataURL (sometimes more reliable with transforms)
+          const canvas = await toCanvas(flowWrapperRef, opts)
+          const mime = format === 'jpeg' ? 'image/jpeg' : 'image/png'
+          dataUrl = canvas.toDataURL(mime, format === 'jpeg' ? 0.92 : undefined)
+        }
+        const ext = format === 'jpeg' ? 'jpg' : 'png'
+        const a = document.createElement('a')
+        a.href = dataUrl
+        a.download = `graph_${analysis.id}.${ext}`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+      } catch (error) {
+        console.error(`${format.toUpperCase()} export failed:`, error)
+        alert(EXPORT_ERROR_MESSAGE)
+      }
+    },
+    [flowWrapperRef, analysis, isDark, filter]
+  )
+
+  const exportPng = useCallback(() => exportImage('png'), [exportImage])
+
+  return { exportPng, exportImage, canExport: Boolean(flowWrapperRef && analysis) }
+}

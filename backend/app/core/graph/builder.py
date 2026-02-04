@@ -7,6 +7,7 @@ import networkx as nx
 
 from app.api.models import Edge, ImportInfo, Node
 from app.core.graph.resolvers import get_resolver
+from app.core.graph.version_resolver import get_external_package_version
 
 if TYPE_CHECKING:
     from app.api.models import AnalysisResult
@@ -202,6 +203,9 @@ class GraphBuilder:
                 label = Path(node_id).name
 
             external_kind = node_data.get("external_kind")  # "stdlib" | "package" | None (legacy)
+            version: str | None = None
+            if node_data["node_type"] == "external" and external_kind == "package":
+                version = get_external_package_version(node_id)
 
             nodes.append(
                 Node(
@@ -210,6 +214,7 @@ class GraphBuilder:
                     file_path=node_data["file_path"],
                     node_type=node_data["node_type"],
                     external_kind=external_kind,
+                    version=version,
                     import_count=import_count,
                     imported_by_count=imported_by_count,
                     pagerank=pagerank.get(node_id, 0.0),

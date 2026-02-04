@@ -1,28 +1,36 @@
-import { useEffect, useRef, useMemo } from 'react'
-import cytoscape, { type Core, type NodeSingular } from 'cytoscape'
-// @ts-expect-error - cytoscape-cola has no types
-import cola from 'cytoscape-cola'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
-  useGraphStore,
-  type EdgeWidthPreset,
-  type LabelFontSize,
-  type NodeBorderWidth,
-  type EdgeOpacityPreset,
-} from '@/stores/graphStore'
+  Background,
+  MarkerType,
+  Panel,
+  ReactFlow,
+  ReactFlowProvider,
+  useEdgesState,
+  useNodesState,
+  useReactFlow,
+  type Edge,
+  type Node,
+} from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
+import { useGraphStore } from '@/stores/graphStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { GraphFloatingControls } from './GraphFloatingControls'
-import type { AnalysisResult, Node, Edge } from '@/types/api'
+import { ModuleNode } from './nodes/ModuleNode'
+import { DirectionEdge } from './edges/DirectionEdge'
+import type { AnalysisResult, Node as ApiNode, Edge as ApiEdge } from '@/types/api'
 import { getRelativePath, isUnderFolder } from '@/lib/pathUtils'
+import { getLayoutedNodes, type LayoutName } from '@/lib/graphLayout'
+import { metricForMode, heatFromMetric } from '@/lib/graphNodeUtils'
 
 export function filterNodesAndEdgesByFolder(
   analysis: AnalysisResult,
   selectedFolderPath: string | null,
   showStdlibNodes: boolean,
   showExternalPackages: boolean
-): { nodes: Node[]; edges: Edge[] } {
+): { nodes: ApiNode[]; edges: ApiEdge[] } {
   const projectPath = analysis.project_path
 
-  let internalNodes: Node[]
+  let internalNodes: ApiNode[]
   if (!selectedFolderPath) {
     internalNodes = analysis.nodes.filter((n) => n.node_type !== 'external')
   } else {
@@ -34,7 +42,7 @@ export function filterNodesAndEdgesByFolder(
   }
 
   const internalIds = new Set(internalNodes.map((n) => n.id))
-  let externalNodes: Node[] = []
+  let externalNodes: ApiNode[] = []
   if (showStdlibNodes || showExternalPackages) {
     externalNodes = analysis.nodes.filter((n) => {
       if (n.node_type !== 'external') return false
@@ -42,7 +50,9 @@ export function filterNodesAndEdgesByFolder(
       if (kind === 'stdlib' && !showStdlibNodes) return false
       if (kind === 'package' && !showExternalPackages) return false
       const connected = analysis.edges.some(
-        (e) => (e.source === n.id && internalIds.has(e.target)) || (e.target === n.id && internalIds.has(e.source))
+        (e) =>
+          (e.source === n.id && internalIds.has(e.target)) ||
+          (e.target === n.id && internalIds.has(e.source))
       )
       return connected
     })
@@ -50,352 +60,438 @@ export function filterNodesAndEdgesByFolder(
 
   const nodes = [...internalNodes, ...externalNodes]
   const nodeIds = new Set(nodes.map((n) => n.id))
-  const edges = analysis.edges.filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target))
-
+  const edges = analysis.edges.filter(
+    (e) => nodeIds.has(e.source) && nodeIds.has(e.target)
+  )
   return { nodes, edges }
 }
 
-// Register cola layout
-cytoscape.use(cola)
-
-// Distinct palette so each node gets a different color (stable by node id)
-const NODE_COLOR_PALETTE = [
-  '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899',
-  '#f43f5e', '#ef4444', '#f97316', '#eab308', '#84cc16',
-  '#22c55e', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6',
-  '#2563eb', '#7c3aed', '#db2777', '#dc2626', '#ea580c',
-  '#ca8a04', '#65a30d', '#059669', '#0891b2', '#0284c7',
-]
-
-function nodeColorForId(id: string): string {
-  let h = 0
-  for (let i = 0; i < id.length; i++) h = ((h << 5) - h) + id.charCodeAt(i) | 0
-  const idx = Math.abs(h) % NODE_COLOR_PALETTE.length
-  return NODE_COLOR_PALETTE[idx]
-}
-
-const EDGE_WIDTH_MAP: Record<EdgeWidthPreset, number> = { thin: 1, normal: 2, thick: 3 }
-const LABEL_FONT_SIZE_MAP: Record<LabelFontSize, string> = { small: '10px', medium: '12px', large: '14px' }
-const NODE_BORDER_WIDTH_MAP: Record<NodeBorderWidth, number> = { thin: 1, normal: 2, thick: 3 }
-const EDGE_OPACITY_MAP: Record<EdgeOpacityPreset, number> = { faded: 0.5, normal: 0.7, solid: 1 }
+const nodeTypes = { module: ModuleNode }
+const edgeTypes = { direction: DirectionEdge }
 
 interface GraphVisualizationProps {
   analysis: AnalysisResult
 }
 
-export function GraphVisualization({ analysis }: GraphVisualizationProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const cyRef = useRef<Core | null>(null)
+function GraphFlow({
+  filteredNodes,
+  filteredEdges,
+}: {
+  filteredNodes: ApiNode[]
+  filteredEdges: ApiEdge[]
+}) {
+  const nodeById = useMemo(
+    () => new Map(filteredNodes.map((n) => [n.id, n])),
+    [filteredNodes]
+  )
   const {
-    selectedNode,
     setSelectedNode,
-    setCyInstance,
-    selectedFolderPath,
     layoutName,
-    showStdlibNodes,
-    showExternalPackages,
-    searchQuery,
-    isFullScreen,
-    showNodeLabels,
-    nodeSizeMode,
-    edgeWidth,
-    nodeShape,
-    labelFontSize,
-    nodeBorderWidth,
-    edgeCurveStyle,
-    edgeOpacity,
     layoutAnimation,
     fitRequest,
+    searchQuery,
+    selectedNode,
+    nodeSizeMode,
+    nodeShape,
+    heatmapMode,
   } = useGraphStore()
-  const isDark = useThemeStore((s) => s.isDark)
 
-  const baseEdgeWidth = EDGE_WIDTH_MAP[edgeWidth]
-  const nodeBorderPx = NODE_BORDER_WIDTH_MAP[nodeBorderWidth]
-  const edgeOpacityValue = EDGE_OPACITY_MAP[edgeOpacity]
+  /** Mirrors ModuleNode size formula so layout spacing matches rendered node dimensions. */
+  const getNodeSize = useCallback(
+    (node: Node): { width: number; height: number } => {
+      const degree = (node.data?.degree as number) ?? 0
+      const size =
+        nodeSizeMode === 'fixed' ? 40 : Math.max(30, Math.min(60, 30 + degree * 2))
+      if (nodeShape === 'diamond') {
+        const dim = size * 1.2
+        return { width: dim, height: dim }
+      }
+      return { width: size * 2.5, height: size }
+    },
+    [nodeSizeMode, nodeShape]
+  )
+
+  const degreeByNodeId = useMemo(() => {
+    const m = new Map<string, number>()
+    filteredNodes.forEach((n) => m.set(n.id, 0))
+    filteredEdges.forEach((e) => {
+      m.set(e.source, (m.get(e.source) ?? 0) + 1)
+      m.set(e.target, (m.get(e.target) ?? 0) + 1)
+    })
+    return m
+  }, [filteredNodes, filteredEdges])
+
+  const heatByNodeId = useMemo(() => {
+    const metric = metricForMode(heatmapMode)
+    if (!metric) return null
+    return heatFromMetric(filteredNodes, metric)
+  }, [filteredNodes, heatmapMode])
+
+  const initialNodes = useMemo(() => {
+    const rfNodes: Node[] = filteredNodes.map((n) => ({
+      id: n.id,
+      position: { x: 0, y: 0 },
+      data: {
+        label: n.label,
+        file_path: n.file_path,
+        node_type: n.node_type,
+        external_kind: n.external_kind,
+        degree: degreeByNodeId.get(n.id) ?? 0,
+        ...(heatByNodeId ? { heat: heatByNodeId.get(n.id) ?? undefined } : {}),
+      },
+      type: 'module',
+    }))
+    return getLayoutedNodes(rfNodes, filteredEdges, layoutName as LayoutName, getNodeSize)
+  }, [filteredNodes, filteredEdges, layoutName, degreeByNodeId, getNodeSize, heatByNodeId])
+
+  const initialEdges = useMemo((): Edge[] => {
+    return filteredEdges.map((e) => ({
+      id: `${e.source}-${e.target}`,
+      source: e.source,
+      target: e.target,
+      type: 'direction',
+      data: {},
+      markerEnd: { type: MarkerType.ArrowClosed },
+    }))
+  }, [filteredEdges])
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+
+  useEffect(() => {
+    const rfNodes: Node[] = filteredNodes.map((n) => ({
+      id: n.id,
+      position: { x: 0, y: 0 },
+      data: {
+        label: n.label,
+        file_path: n.file_path,
+        node_type: n.node_type,
+        external_kind: n.external_kind,
+        degree: degreeByNodeId.get(n.id) ?? 0,
+        ...(heatByNodeId ? { heat: heatByNodeId.get(n.id) ?? undefined } : {}),
+      },
+      type: 'module',
+    }))
+    const layouted = getLayoutedNodes(rfNodes, filteredEdges, layoutName as LayoutName, getNodeSize)
+    setNodes(layouted)
+    setEdges(
+      filteredEdges.map((e) => ({
+        id: `${e.source}-${e.target}`,
+        source: e.source,
+        target: e.target,
+        type: 'direction',
+        data: {},
+        markerEnd: { type: MarkerType.ArrowClosed },
+      }))
+    )
+  }, [filteredNodes, filteredEdges, layoutName, degreeByNodeId, getNodeSize, heatByNodeId, setNodes, setEdges])
+
+  const applyHighlight = useCallback(
+    (nodeId: string) => {
+      const connectedIds = new Set<string>([nodeId])
+      filteredEdges.forEach((e) => {
+        if (e.source === nodeId || e.target === nodeId) {
+          connectedIds.add(e.source)
+          connectedIds.add(e.target)
+        }
+      })
+      setNodes((nodes) =>
+        nodes.map((n) => ({
+          ...n,
+          data: {
+            ...n.data,
+            highlighted: connectedIds.has(n.id),
+            dimmed: !connectedIds.has(n.id),
+            hovered: false,
+          },
+        }))
+      )
+      setEdges((edges) =>
+        edges.map((e) => ({
+          ...e,
+          data: {
+            edgeType:
+              e.source === nodeId ? ('out' as const) : e.target === nodeId ? ('in' as const) : undefined,
+            dimmed: !(connectedIds.has(e.source) && connectedIds.has(e.target)),
+          },
+        }))
+      )
+    },
+    [filteredEdges, setNodes, setEdges]
+  )
+
+  const clearHighlight = useCallback(() => {
+    setNodes((nodes) =>
+      nodes.map((n) => ({
+        ...n,
+        data: { ...n.data, highlighted: false, dimmed: false, hovered: false },
+      }))
+    )
+    setEdges((edges) =>
+      edges.map((e) => ({
+        ...e,
+        data: { ...e.data, dimmed: false, edgeType: undefined, hovered: false },
+      }))
+    )
+  }, [setNodes, setEdges])
+
+  const onNodeClick = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      setSelectedNode(nodeById.get(node.id) ?? null)
+      applyHighlight(node.id)
+    },
+    [setSelectedNode, nodeById, applyHighlight]
+  )
+
+  const onEdgeClick = useCallback(
+    (_: React.MouseEvent, edge: Edge) => {
+      setSelectedNode(nodeById.get(edge.target) ?? null)
+      applyHighlight(edge.target)
+    },
+    [setSelectedNode, nodeById, applyHighlight]
+  )
+
+  const onPaneClick = useCallback(() => {
+    setSelectedNode(null)
+    clearHighlight()
+  }, [setSelectedNode, clearHighlight])
+
+  const { fitView } = useReactFlow()
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      clearHighlight()
+      return
+    }
+    const q = searchQuery.toLowerCase()
+    const matchingIds = filteredNodes
+      .filter(
+        (n) =>
+          n.label.toLowerCase().includes(q) ||
+          n.file_path.toLowerCase().includes(q)
+      )
+      .map((n) => n.id)
+    setNodes((nodes) =>
+      nodes.map((n) => {
+        const match = matchingIds.includes(n.id)
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            dimmed: !match,
+            highlighted: match,
+          },
+        }
+      })
+    )
+    setEdges((edges) =>
+      edges.map((e) => ({
+        ...e,
+        data: { ...e.data, dimmed: true },
+      }))
+    )
+    if (matchingIds.length > 0) {
+      setTimeout(() => {
+        fitView({
+          nodes: matchingIds.map((id) => ({ id })),
+          padding: 0.2,
+          duration: layoutAnimation ? 300 : 0,
+        })
+      }, 0)
+    }
+  }, [searchQuery, filteredNodes, setNodes, setEdges, layoutAnimation, fitView, clearHighlight])
+
+  useEffect(() => {
+    if (fitRequest === 0) return
+    fitView({ padding: 0.2, duration: layoutAnimation ? 300 : 0 })
+  }, [fitRequest, fitView, layoutAnimation])
+
+  const isFullScreen = useGraphStore((s) => s.isFullScreen)
+  useEffect(() => {
+    const t = setTimeout(() => fitView({ padding: 0.2, duration: 0 }), 100)
+    return () => clearTimeout(t)
+  }, [filteredNodes.length, isFullScreen])
+
+  useEffect(() => {
+    if (!selectedNode) {
+      clearHighlight()
+      return
+    }
+    applyHighlight(selectedNode.id)
+    setTimeout(() => {
+      fitView({
+        nodes: [{ id: selectedNode.id }],
+        padding: 0.3,
+        duration: 500,
+        maxZoom: 1.5,
+      })
+    }, 0)
+  }, [selectedNode?.id, applyHighlight, clearHighlight, fitView])
+
+  const onNodeMouseEnter = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      setNodes((nodes) =>
+        nodes.map((n) => ({
+          ...n,
+          data: {
+            ...n.data,
+            hovered: n.id === node.id,
+          },
+        }))
+      )
+      const connectedIds = new Set<string>([node.id])
+      filteredEdges.forEach((e) => {
+        if (e.source === node.id || e.target === node.id) {
+          connectedIds.add(e.source)
+          connectedIds.add(e.target)
+        }
+      })
+      setEdges((edges) =>
+        edges.map((e) => ({
+          ...e,
+          data: {
+            ...e.data,
+            hovered:
+              connectedIds.has(e.source) && connectedIds.has(e.target),
+          },
+        }))
+      )
+    },
+    [filteredEdges, setNodes, setEdges]
+  )
+
+  const onNodeMouseLeave = useCallback(() => {
+    setNodes((nodes) =>
+      nodes.map((n) => ({ ...n, data: { ...n.data, hovered: false } }))
+    )
+    setEdges((edges) =>
+      edges.map((e) => ({ ...e, data: { ...e.data, hovered: false } }))
+    )
+  }, [setNodes, setEdges])
+
+  const onEdgeMouseEnter = useCallback(
+    (_: React.MouseEvent, edge: Edge) => {
+      setNodes((nodes) =>
+        nodes.map((n) => ({
+          ...n,
+          data: {
+            ...n.data,
+            hovered: n.id === edge.source || n.id === edge.target,
+          },
+        }))
+      )
+      setEdges((edges) =>
+        edges.map((e) => ({
+          ...e,
+          data: { ...e.data, hovered: e.id === edge.id },
+        }))
+      )
+    },
+    [setNodes, setEdges]
+  )
+
+  const onEdgeMouseLeave = useCallback(() => {
+    setNodes((nodes) =>
+      nodes.map((n) => ({ ...n, data: { ...n.data, hovered: false } }))
+    )
+    setEdges((edges) =>
+      edges.map((e) => ({ ...e, data: { ...e.data, hovered: false } }))
+    )
+  }, [setNodes, setEdges])
+
+  return (
+    <ReactFlow
+      nodes={nodes}
+      edges={edges}
+      onNodesChange={onNodesChange}
+      onEdgesChange={onEdgesChange}
+      onNodeClick={onNodeClick}
+      onEdgeClick={onEdgeClick}
+      onPaneClick={onPaneClick}
+      onNodeMouseEnter={onNodeMouseEnter}
+      onNodeMouseLeave={onNodeMouseLeave}
+      onEdgeMouseEnter={onEdgeMouseEnter}
+      onEdgeMouseLeave={onEdgeMouseLeave}
+      nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
+      fitView
+      fitViewOptions={{
+        padding: 0.2,
+        duration: layoutAnimation ? 300 : 0,
+      }}
+      minZoom={0.1}
+      maxZoom={3}
+      nodesDraggable={true}
+      nodesConnectable={false}
+      elementsSelectable={true}
+      proOptions={{ hideAttribution: true }}
+      className="rounded-xl"
+    >
+      <Background />
+      <Panel position="bottom-center">
+        <GraphFloatingControls />
+      </Panel>
+    </ReactFlow>
+  )
+}
+
+export function GraphVisualization({ analysis }: GraphVisualizationProps) {
+  const wrapperRef = useRef<HTMLDivElement | null>(null)
+  const setFlowWrapperRef = useGraphStore((s) => s.setFlowWrapperRef)
+  const isDark = useThemeStore((s) => s.isDark)
+  const graphBackground = useGraphStore((s) => s.graphBackground)
+  const { selectedFolderPath, showStdlibNodes, showExternalPackages } =
+    useGraphStore()
 
   const { nodes: filteredNodes, edges: filteredEdges } = useMemo(
-    () => filterNodesAndEdgesByFolder(analysis, selectedFolderPath, showStdlibNodes, showExternalPackages),
+    () =>
+      filterNodesAndEdgesByFolder(
+        analysis,
+        selectedFolderPath,
+        showStdlibNodes,
+        showExternalPackages
+      ),
     [analysis, selectedFolderPath, showStdlibNodes, showExternalPackages]
   )
 
-  const styleArray = useMemo(() => [
-    {
-      selector: 'node',
-      style: {
-        'background-color': (ele: NodeSingular) => {
-          const kind = ele.data('external_kind') as string | undefined
-          if (kind === 'stdlib') return isDark ? '#64748b' : '#94a3b8'
-          if (kind === 'package') return isDark ? '#d97706' : '#f59e0b'
-          return nodeColorForId(ele.data('id'))
-        },
-        'label': showNodeLabels ? 'data(label)' : '',
-        'shape': nodeShape,
-        'width': nodeSizeMode === 'fixed' ? 40 : (ele: NodeSingular) => {
-          const degree = ele.degree()
-          return Math.max(30, Math.min(60, 30 + degree * 2))
-        },
-        'height': nodeSizeMode === 'fixed' ? 40 : (ele: NodeSingular) => {
-          const degree = ele.degree()
-          return Math.max(30, Math.min(60, 30 + degree * 2))
-        },
-        'font-size': LABEL_FONT_SIZE_MAP[labelFontSize],
-        'color': isDark ? '#f1f5f9' : '#1e293b',
-        'text-valign': 'center',
-        'text-halign': 'center',
-        'text-wrap': 'wrap' as const,
-        'text-max-width': '100px',
-        'border-width': nodeBorderPx,
-        'border-color': (ele: NodeSingular) => {
-          const kind = ele.data('external_kind') as string | undefined
-          if (kind === 'stdlib') return isDark ? '#64748b' : '#94a3b8'
-          if (kind === 'package') return isDark ? '#d97706' : '#f59e0b'
-          return nodeColorForId(ele.data('id'))
-        },
-      },
-    },
-    { selector: 'node:selected', style: { 'border-width': nodeBorderPx + 2, 'border-color': '#a78bfa', 'background-color': '#a78bfa' } },
-    {
-      selector: 'edge',
-      style: {
-        'width': baseEdgeWidth,
-        'line-color': isDark ? '#64748b' : '#cbd5e1',
-        'target-arrow-color': isDark ? '#64748b' : '#cbd5e1',
-        'target-arrow-shape': 'triangle',
-        'curve-style': edgeCurveStyle,
-        'opacity': edgeOpacityValue,
-      },
-    },
-    { selector: 'edge:selected', style: { 'line-color': '#8b5cf6', 'target-arrow-color': '#8b5cf6', 'width': baseEdgeWidth + 1, 'opacity': 1 } },
-    { selector: '.highlighted', style: { 'background-color': isDark ? '#f59e0b' : '#fbbf24', 'border-color': '#f59e0b', 'border-width': 3 } },
-    { selector: '.connected-out', style: { 'line-color': '#3b82f6', 'target-arrow-color': '#3b82f6', 'width': baseEdgeWidth + 1, 'opacity': 1 } },
-    { selector: '.connected-in', style: { 'line-color': '#10b981', 'target-arrow-color': '#10b981', 'width': baseEdgeWidth + 1, 'opacity': 1 } },
-    { selector: '.connected', style: { 'line-color': '#8b5cf6', 'target-arrow-color': '#8b5cf6', 'width': baseEdgeWidth + 1, 'opacity': 1 } },
-    { selector: '.dimmed', style: { 'opacity': 0.2 } },
-  ], [showNodeLabels, nodeSizeMode, edgeWidth, nodeShape, labelFontSize, nodeBorderWidth, edgeCurveStyle, edgeOpacity, isDark, baseEdgeWidth, nodeBorderPx, edgeOpacityValue])
-
-  useEffect(() => {
-    if (!containerRef.current) return
-
-    const nodes = filteredNodes
-    const edges = filteredEdges
-
-    const cy = cytoscape({
-      container: containerRef.current,
-      elements: {
-        nodes: nodes.map(node => ({
-          data: {
-            id: node.id,
-            label: node.label,
-            node_type: node.node_type,
-            file_path: node.file_path,
-            external_kind: node.external_kind ?? undefined,
-          },
-        })),
-        edges: edges.map(edge => ({
-          data: { id: `${edge.source}-${edge.target}`, source: edge.target, target: edge.source },
-        })),
-      },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cytoscape stylesheet accepts mapper functions
-      style: styleArray as any,
-      layout: {
-        name: layoutName,
-        // @ts-expect-error - cola layout options
-        infinite: false,
-        fit: true,
-        padding: 50,
-        animate: layoutAnimation,
-        animationDuration: 500,
-      },
-      minZoom: 0.1,
-      maxZoom: 3,
-    })
-
-    cyRef.current = cy
-    setCyInstance(cy)
-
-    // Node click handler: set full node from analysis so MetricsPanel has import_count, imported_by_count, pagerank, etc.
-    const nodeById = new Map(nodes.map((n) => [n.id, n]))
-    cy.on('tap', 'node', (event) => {
-      const node = event.target
-      const id = node.data('id')
-      const fullNode = nodeById.get(id) ?? null
-      setSelectedNode(fullNode)
-      
-      // Highlight connected nodes and edges with direction-aware colors
-      cy.elements().removeClass('highlighted connected connected-in connected-out dimmed')
-      
-      // Get outgoing and incoming edges separately
-      const outgoingEdges = node.connectedEdges(`[source = "${id}"]`)
-      const incomingEdges = node.connectedEdges(`[target = "${id}"]`)
-      const allConnectedEdges = node.connectedEdges()
-      const connectedNodes = allConnectedEdges.connectedNodes()
-      
-      // Dim unconnected elements
-      cy.elements().addClass('dimmed')
-      
-      // Highlight the selected node and its connections
-      node.removeClass('dimmed').addClass('highlighted')
-      connectedNodes.removeClass('dimmed')
-      
-      // Color edges by direction
-      outgoingEdges.removeClass('dimmed').addClass('connected-out')  // Blue for imports (what this node imports)
-      incomingEdges.removeClass('dimmed').addClass('connected-in')   // Green for imported-by (who imports this node)
-    })
-
-    // Edge click handler: select the target node (the node the edge points to) and apply same highlight
-    cy.on('tap', 'edge', (event) => {
-      const edge = event.target
-      const targetId = edge.data('target')
-      const fullNode = nodeById.get(targetId) ?? null
-      setSelectedNode(fullNode)
-
-      cy.elements().removeClass('highlighted connected connected-in connected-out dimmed')
-      cy.elements().addClass('dimmed')
-
-      const targetNode = cy.getElementById(targetId)
-      const sourceId = edge.data('source')
-      const sourceNode = cy.getElementById(sourceId)
-      targetNode.removeClass('dimmed').addClass('highlighted')
-      sourceNode.removeClass('dimmed')
-      edge.removeClass('dimmed').addClass('connected-out')
-      const outgoingEdges = targetNode.connectedEdges(`[source = "${targetId}"]`)
-      const incomingEdges = targetNode.connectedEdges(`[target = "${targetId}"]`)
-      outgoingEdges.removeClass('dimmed').addClass('connected-out')
-      incomingEdges.removeClass('dimmed').addClass('connected-in')
-    })
-
-    // Background click handler
-    cy.on('tap', (event) => {
-      if (event.target === cy) {
-        setSelectedNode(null)
-        cy.elements().removeClass('highlighted connected connected-in connected-out dimmed')
-      }
-    })
-
-    return () => {
-      setCyInstance(null)
-      cy.destroy()
-    }
-  }, [filteredNodes, filteredEdges, layoutName, setSelectedNode, setCyInstance])
-
-  // Update style when display options change (no graph recreation)
-  useEffect(() => {
-    if (!cyRef.current) return
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cytoscape stylesheet accepts mapper functions
-    cyRef.current.style(styleArray as any)
-  }, [styleArray])
-
-  // Handle search
-  useEffect(() => {
-    if (!cyRef.current) return
-
-    const cy = cyRef.current
-    cy.elements().removeClass('highlighted dimmed')
-
-    if (searchQuery) {
-      const matchingNodes = cy.nodes().filter((node: NodeSingular) => {
-        const label = node.data('label').toLowerCase()
-        const filePath = node.data('file_path').toLowerCase()
-        const query = searchQuery.toLowerCase()
-        return label.includes(query) || filePath.includes(query)
-      })
-
-      if (matchingNodes.length > 0) {
-        cy.elements().addClass('dimmed')
-        matchingNodes.removeClass('dimmed').addClass('highlighted')
-        
-        // Fit to highlighted nodes
-        cy.fit(matchingNodes, 50)
-      }
-    }
-  }, [searchQuery])
-
-  // Handle layout change
-  useEffect(() => {
-    if (!cyRef.current) return
-    const cy = cyRef.current
-    cy.layout({
-      name: layoutName,
-      // @ts-expect-error - cola layout options
-      infinite: false,
-      fit: true,
-      padding: 50,
-      animate: layoutAnimation,
-      animationDuration: 500,
-    }).run()
-  }, [layoutName, layoutAnimation])
-
-  // Fit to screen when user clicks "Fit to screen"
-  useEffect(() => {
-    if (!cyRef.current || fitRequest === 0) return
-    cyRef.current.fit(undefined, 50)
-  }, [fitRequest])
-
-  // Handle external selectedNode change (e.g. from ExternalPackagesModal)
-  useEffect(() => {
-    if (!cyRef.current) return
-    
-    const cy = cyRef.current
-    
-    if (selectedNode) {
-      const node = cy.getElementById(selectedNode.id)
-      if (node.length > 0) {
-        // Clear previous highlights
-        cy.elements().removeClass('highlighted connected connected-in connected-out dimmed')
-        
-        // Get outgoing and incoming edges separately
-        const id = selectedNode.id
-        const outgoingEdges = node.connectedEdges(`[source = "${id}"]`)
-        const incomingEdges = node.connectedEdges(`[target = "${id}"]`)
-        const allConnectedEdges = node.connectedEdges()
-        const connectedNodes = allConnectedEdges.connectedNodes()
-        
-        cy.elements().addClass('dimmed')
-        node.removeClass('dimmed').addClass('highlighted')
-        connectedNodes.removeClass('dimmed')
-        
-        // Color edges by direction
-        outgoingEdges.removeClass('dimmed').addClass('connected-out')  // Blue for imports
-        incomingEdges.removeClass('dimmed').addClass('connected-in')   // Green for imported-by
-        
-        // Zoom to node
-        cy.animate({
-          center: { eles: node },
-          zoom: 1.5,
-        }, {
-          duration: 500,
-          easing: 'ease-in-out-cubic',
+  const setRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      wrapperRef.current = el
+      setFlowWrapperRef(el)
+      // Re-set ref after layout so header Export button sees it (store update after paint)
+      if (el) {
+        const rafId = requestAnimationFrame(() => {
+          setFlowWrapperRef(el)
         })
+        return () => cancelAnimationFrame(rafId)
       }
-    } else {
-      // Clear highlights when no node selected
-      cy.elements().removeClass('highlighted connected connected-in connected-out dimmed')
-    }
-  }, [selectedNode])
+    },
+    [setFlowWrapperRef]
+  )
+  useEffect(() => () => setFlowWrapperRef(null), [setFlowWrapperRef])
 
-  // Handle full screen resize
-  useEffect(() => {
-    if (!cyRef.current) return
-    
-    const cy = cyRef.current
-    
-    // Small delay to let the DOM update
-    const timer = setTimeout(() => {
-      cy.resize()
-      cy.fit(undefined, 50)
-    }, 100)
-    
-    return () => clearTimeout(timer)
-  }, [isFullScreen])
+  const backgroundClass =
+    graphBackground === 'grid'
+      ? isDark
+        ? 'blueprint-grid'
+        : 'blueprint-grid-light'
+      : isDark
+        ? 'dot-pattern'
+        : 'dot-pattern-light'
+
+  const selectedNode = useGraphStore((s) => s.selectedNode)
 
   return (
-    <div className={`relative w-full h-full dot-pattern-light dark:dot-pattern`}>
-      <div
-        ref={containerRef}
-        className="w-full h-full rounded-xl"
-        role="img"
-        aria-label="Dependency graph visualization"
-      />
+    <div
+      ref={setRef}
+      className={`relative w-full h-full ${backgroundClass}`}
+    >
+      <ReactFlowProvider>
+        <GraphFlow
+          filteredNodes={filteredNodes}
+          filteredEdges={filteredEdges}
+        />
+      </ReactFlowProvider>
       {filteredNodes.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <p className="text-sm text-gray-500 dark:text-slate-400 font-medium">
@@ -403,19 +499,23 @@ export function GraphVisualization({ analysis }: GraphVisualizationProps) {
           </p>
         </div>
       )}
-      <GraphFloatingControls />
-
       {selectedNode && (
-        <div className="absolute bottom-4 left-4 p-3 rounded-xl bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border border-gray-200 dark:border-white/10 shadow-lg z-10">
-          <div className="text-xs font-semibold text-gray-600 dark:text-slate-400 mb-2">Edge Colors</div>
+        <div data-skip-export className="absolute bottom-4 left-4 p-3 rounded-xl bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border border-gray-200 dark:border-white/10 shadow-lg z-10">
+          <div className="text-xs font-semibold text-gray-600 dark:text-slate-400 mb-2">
+            Edge Colors
+          </div>
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <div className="w-8 h-0.5 bg-blue-500 rounded" />
-              <span className="text-xs text-gray-500 dark:text-slate-500 font-mono-ui">Imports (outgoing)</span>
+              <span className="text-xs text-gray-500 dark:text-slate-500 font-mono-ui">
+                Imports (outgoing, solid)
+              </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-0.5 bg-emerald-500 rounded" />
-              <span className="text-xs text-gray-500 dark:text-slate-500 font-mono-ui">Imported by (incoming)</span>
+              <div className="w-8 h-0.5 border-b-2 border-dashed border-emerald-500 box-border" />
+              <span className="text-xs text-gray-500 dark:text-slate-500 font-mono-ui">
+                Imported by (incoming, dashed)
+              </span>
             </div>
           </div>
         </div>

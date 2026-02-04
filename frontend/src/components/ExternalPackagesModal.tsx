@@ -216,7 +216,14 @@ export function ExternalPackagesModal({ analysis, onClose, onSelectNode }: Exter
                         <Package className="w-4 h-4 text-sky-500" aria-hidden />
                       </div>
                       <div className="min-w-0 flex-1 text-left">
-                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{pkg.label}</div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{pkg.label}</span>
+                          {pkg.version && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600 shrink-0" title="Installed version">
+                              v{pkg.version}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-slate-500 dark:text-slate-400 truncate font-mono">{pkg.file_path}</div>
                       </div>
                     </div>

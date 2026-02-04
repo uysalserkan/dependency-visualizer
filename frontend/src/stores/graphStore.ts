@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import type { Core } from 'cytoscape'
 import type { AnalysisResult, Node } from '@/types/api'
 
 export type NodeSizeMode = 'degree' | 'fixed'
@@ -7,9 +6,15 @@ export type EdgeWidthPreset = 'thin' | 'normal' | 'thick'
 export type NodeShapeType = 'ellipse' | 'rectangle' | 'round-rectangle' | 'diamond'
 export type LabelFontSize = 'small' | 'medium' | 'large'
 export type NodeBorderWidth = 'thin' | 'normal' | 'thick'
-export type EdgeCurveStyle = 'bezier' | 'straight'
+export type EdgeCurveStyle = 'bezier' | 'unbundled-bezier' | 'straight'
 export type EdgeOpacityPreset = 'faded' | 'normal' | 'solid'
 export type ViewMode = 'graph' | 'list'
+export type HeatmapMode =
+  | 'off'
+  | 'god_fanout'
+  | 'god_fanin'
+  | 'impact_pagerank'
+  | 'impact_betweenness'
 
 interface GraphState {
   analysis: AnalysisResult | null
@@ -18,7 +23,7 @@ interface GraphState {
   selectedFolderPath: string | null
   searchQuery: string
   layoutName: string
-  /** Main content view: graph (Cytoscape) or list (table of nodes). */
+  /** Main content view: graph (React Flow) or list (table of nodes). */
   viewMode: ViewMode
   /** Show built-in / standard library nodes (e.g. os, json, fs, path). */
   showStdlibNodes: boolean
@@ -36,11 +41,15 @@ interface GraphState {
   edgeOpacity: EdgeOpacityPreset
   layoutAnimation: boolean
   fitRequest: number
-  /** Cytoscape instance for client-side PNG export; set by GraphVisualization, cleared on unmount. */
-  cyInstance: Core | null
+  /** Graph area background: dots or blueprint grid. */
+  graphBackground: 'dots' | 'grid'
+  /** React Flow wrapper element for client-side PNG export; set by GraphVisualization, cleared on unmount. */
+  flowWrapperRef: HTMLElement | null
+  /** Heatmap: color nodes by refactor hotspot metric (off = default node colors). */
+  heatmapMode: HeatmapMode
 
   setAnalysis: (analysis: AnalysisResult | null) => void
-  setCyInstance: (cy: Core | null) => void
+  setFlowWrapperRef: (el: HTMLElement | null) => void
   setSelectedNode: (node: Node | null) => void
   setSelectedFolderPath: (path: string | null) => void
   setSearchQuery: (query: string) => void
@@ -59,6 +68,8 @@ interface GraphState {
   setEdgeOpacity: (opacity: EdgeOpacityPreset) => void
   setLayoutAnimation: (animate: boolean) => void
   requestFit: () => void
+  setGraphBackground: (bg: 'dots' | 'grid') => void
+  setHeatmapMode: (mode: HeatmapMode) => void
 }
 
 export const useGraphStore = create<GraphState>((set) => ({
@@ -74,17 +85,19 @@ export const useGraphStore = create<GraphState>((set) => ({
   showNodeLabels: true,
   nodeSizeMode: 'degree',
   edgeWidth: 'normal',
-  nodeShape: 'ellipse',
+  nodeShape: 'round-rectangle',
   labelFontSize: 'medium',
   nodeBorderWidth: 'normal',
   edgeCurveStyle: 'bezier',
   edgeOpacity: 'normal',
   layoutAnimation: true,
   fitRequest: 0,
-  cyInstance: null,
+  graphBackground: 'dots',
+  flowWrapperRef: null,
+  heatmapMode: 'off',
 
-  setAnalysis: (analysis) => set({ analysis, selectedNode: null, selectedFolderPath: null, cyInstance: null }),
-  setCyInstance: (cy) => set({ cyInstance: cy }),
+  setAnalysis: (analysis) => set({ analysis, selectedNode: null, selectedFolderPath: null }),
+  setFlowWrapperRef: (el) => set({ flowWrapperRef: el }),
   setSelectedNode: (node) => set({ selectedNode: node }),
   setSelectedFolderPath: (path) => set({ selectedFolderPath: path }),
   setSearchQuery: (query) => set({ searchQuery: query }),
@@ -103,4 +116,6 @@ export const useGraphStore = create<GraphState>((set) => ({
   setEdgeOpacity: (opacity) => set({ edgeOpacity: opacity }),
   setLayoutAnimation: (animate) => set({ layoutAnimation: animate }),
   requestFit: () => set((state) => ({ fitRequest: state.fitRequest + 1 })),
+  setGraphBackground: (bg) => set({ graphBackground: bg }),
+  setHeatmapMode: (mode) => set({ heatmapMode: mode }),
 }))

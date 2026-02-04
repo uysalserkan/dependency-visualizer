@@ -93,6 +93,11 @@ export interface FolderMetrics {
   /** Folder-scoped: count of third-party package nodes referenced by this folder. */
   external_package_count: number
   statistics: ImportStatistics | null
+  /** Largest file in folder by size_bytes (then line_count). */
+  largest_file_path: string | null
+  largest_file_size_bytes: number | null
+  largest_file_line_count: number | null
+  largest_file_node: Node | null
 }
 
 /**
@@ -114,6 +119,10 @@ const EMPTY_FOLDER_METRICS: FolderMetrics = {
   external_stdlib_count: 0,
   external_package_count: 0,
   statistics: null,
+  largest_file_path: null,
+  largest_file_size_bytes: null,
+  largest_file_line_count: null,
+  largest_file_node: null,
 }
 
 export function computeFolderMetrics(
@@ -262,6 +271,24 @@ export function computeFolderMetrics(
     top_imported,
   }
 
+  // Largest file in folder: sort by size_bytes desc, then line_count desc
+  const withSize = internalNodes.filter(
+    (node) =>
+      node.size_bytes != null &&
+      (node.size_bytes > 0 || (node.line_count != null && node.line_count > 0))
+  )
+  const largest =
+    withSize.length === 0
+      ? null
+      : [...withSize].sort((a, b) => {
+          const sa = a.size_bytes ?? 0
+          const sb = b.size_bytes ?? 0
+          if (sb !== sa) return sb - sa
+          const la = a.line_count ?? 0
+          const lb = b.line_count ?? 0
+          return lb - la
+        })[0] ?? null
+
   return {
     total_files: n,
     total_imports,
@@ -277,5 +304,9 @@ export function computeFolderMetrics(
     external_stdlib_count,
     external_package_count,
     statistics,
+    largest_file_path: largest?.file_path ?? null,
+    largest_file_size_bytes: largest?.size_bytes ?? null,
+    largest_file_line_count: largest?.line_count ?? null,
+    largest_file_node: largest ?? null,
   }
 }

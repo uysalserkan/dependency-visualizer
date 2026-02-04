@@ -12,6 +12,8 @@ export interface Node {
   node_type: 'module' | 'package' | 'external'
   /** For external nodes: 'stdlib' (built-in) or 'package' (third-party). Undefined for internal or legacy. */
   external_kind?: 'stdlib' | 'package'
+  /** For external package nodes: installed version if resolvable (e.g. PyPI, npm). */
+  version?: string | null
   import_count: number
   imported_by_count: number
   pagerank: number
@@ -28,6 +30,10 @@ export interface Node {
   eigenvector?: number
   /** Phase 2: share of this node's imports that are external (0-1) */
   external_ratio?: number
+  /** File size in bytes (internal nodes only; undefined for external) */
+  size_bytes?: number | null
+  /** Line count (internal nodes only; undefined if file too large or unavailable) */
+  line_count?: number | null
 }
 
 export interface Edge {

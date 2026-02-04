@@ -86,6 +86,10 @@ class Node(BaseModel):
         default=None,
         description="For external nodes: 'stdlib' (built-in) or 'package' (third-party). None for internal.",
     )
+    version: str | None = Field(
+        default=None,
+        description="For external package nodes: installed version if resolvable (e.g. from PyPI, npm). None for internal or stdlib.",
+    )
     import_count: int = Field(default=0, description="Number of imports from this module")
     imported_by_count: int = Field(default=0, description="Number of modules importing this")
     pagerank: float = Field(default=0.0, description="PageRank importance score")
@@ -98,6 +102,9 @@ class Node(BaseModel):
     closeness: float = Field(default=0.0, description="Closeness centrality (average distance to others)")
     eigenvector: float = Field(default=0.0, description="Eigenvector centrality (influence)")
     external_ratio: float = Field(default=0.0, description="Share of this node's imports that are external (0-1)")
+    # File stats (internal modules only; None for external or when unavailable)
+    size_bytes: int | None = Field(default=None, description="File size in bytes (internal nodes only)")
+    line_count: int | None = Field(default=None, description="Number of lines (internal nodes only; None if file too large)")
 
 
 class Edge(BaseModel):
