@@ -23,7 +23,7 @@ import { ImportListModal } from '@/components/ImportListModal'
 import { EntryPointsModal } from '@/components/EntryPointsModal'
 import { useLandingDropZone } from '@/hooks/useLandingDropZone'
 import { useAnalyzeZip } from '@/hooks/useAnalysis'
-import { Network, FolderPlus, Star, PanelLeft, PanelRightClose, PanelRightOpen } from 'lucide-react'
+import { Network, FolderPlus, Star, PanelLeft, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 
 /** GitHub repo URL for "Star on GitHub" link on landing. Set to empty string to hide. */
 const GITHUB_REPO_URL = ''
@@ -33,6 +33,8 @@ function App() {
   const isFullScreen = useGraphStore((state) => state.isFullScreen)
   const isMetricsPanelOpen = useGraphStore((state) => state.isMetricsPanelOpen)
   const toggleMetricsPanel = useGraphStore((state) => state.toggleMetricsPanel)
+  const isProjectTreeOpen = useGraphStore((state) => state.isProjectTreeOpen)
+  const toggleProjectTree = useGraphStore((state) => state.toggleProjectTree)
   const selectedNode = useGraphStore((state) => state.selectedNode)
   const setSelectedNode = useGraphStore((state) => state.setSelectedNode)
   const selectedFolderPath = useGraphStore((state) => state.selectedFolderPath)
@@ -189,24 +191,38 @@ function App() {
             </div>
           </div>
                 ) : (
-                  <div
-                    className={`transition-all duration-300 ease-in-out min-h-0 ${isFullScreen ? 'fixed inset-0 z-40 bg-gray-50 dark:bg-slate-950 p-4' : 'flex flex-col lg:flex-row gap-5 h-[calc(100vh-120px)] lg:overflow-hidden'}`}
-                  >
-                    {!isFullScreen && (
-                      <aside className="hidden lg:flex lg:w-72 shrink-0 flex-col min-h-0 overflow-y-auto" aria-label="Analysis controls">
-                        <ProjectFolderTree />
-                      </aside>
-                    )}
-        
-                    <section
-                      className={`transition-all duration-300 flex flex-col gap-2 min-h-0 flex-1 min-w-0 ${isFullScreen ? 'h-full w-full' : 'lg:h-full'}`}
-                      aria-label="Main view"
-                    >
-                      <div
-                        className={`flex-1 min-h-0 rounded-xl max-md:rounded-none border border-gray-200 dark:border-white/5 overflow-hidden relative z-0 backdrop-blur-md bg-white/80 dark:bg-slate-900/50 ${isFullScreen ? 'shadow-2xl' : ''}`}
-                      >
-                        {!isFullScreen && (
-                          <div className="absolute top-3 right-3 z-10 hidden lg:block" aria-hidden>
+                            <div
+                              className={`transition-all duration-300 ease-in-out min-h-0 ${isFullScreen ? 'fixed inset-0 z-40 bg-gray-50 dark:bg-slate-950 p-4' : 'flex flex-col lg:flex-row gap-5 h-[calc(100vh-120px)] lg:overflow-hidden'}`}
+                            >
+                              {!isFullScreen && isProjectTreeOpen && (
+                                <aside className="hidden lg:flex lg:w-72 shrink-0 flex-col min-h-0 overflow-y-auto transition-all duration-300 ease-in-out" aria-label="Analysis controls">
+                                  <ProjectFolderTree />
+                                </aside>
+                              )}
+                  
+                              <section
+                                className={`transition-all duration-300 flex flex-col gap-2 min-h-0 flex-1 min-w-0 ${isFullScreen ? 'h-full w-full' : 'lg:h-full'}`}
+                                aria-label="Main view"
+                              >
+                                <div
+                                  className={`flex-1 min-h-0 rounded-xl max-md:rounded-none border border-gray-200 dark:border-white/5 overflow-hidden relative z-0 backdrop-blur-md bg-white/80 dark:bg-slate-900/50 ${isFullScreen ? 'shadow-2xl' : ''}`}
+                                >
+                                  {!isFullScreen && (
+                                    <div className="absolute top-3 left-3 z-10 hidden lg:block" aria-hidden>
+                                      <button
+                                        type="button"
+                                        onClick={toggleProjectTree}
+                                        className={`p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg hover:bg-gray-100 dark:hover:bg-slate-800/80 transition-all active:scale-95 ${isProjectTreeOpen ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-slate-400'}`}
+                                        aria-label={isProjectTreeOpen ? 'Hide files' : 'Show files'}
+                                        title={isProjectTreeOpen ? 'Hide files' : 'Show files'}
+                                      >
+                                        {isProjectTreeOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
+                                      </button>
+                                    </div>
+                                  )}
+                                  {!isFullScreen && (
+                                    <div className="absolute top-3 right-3 z-10 hidden lg:block" aria-hidden>
+                  
                             <button
                               type="button"
                               onClick={toggleMetricsPanel}

@@ -49,6 +49,8 @@ interface GraphState {
   heatmapMode: HeatmapMode
   /** Whether the right metrics panel is visible. */
   isMetricsPanelOpen: boolean
+  /** Whether the left project tree sidebar is visible. */
+  isProjectTreeOpen: boolean
   
   // Modal states
   showPreview: boolean
@@ -72,6 +74,7 @@ interface GraphState {
   setShowExternalPackages: (show: boolean) => void
   toggleFullScreen: () => void
   toggleMetricsPanel: () => void
+  toggleProjectTree: () => void
   setShowNodeLabels: (show: boolean) => void
 
   // Modal actions
@@ -121,6 +124,7 @@ export const useGraphStore = create<GraphState>((set) => ({
   flowWrapperRef: null,
   heatmapMode: 'off',
   isMetricsPanelOpen: true,
+  isProjectTreeOpen: true,
   
   showPreview: false,
   showExternalPackagesModal: false,
@@ -142,6 +146,7 @@ export const useGraphStore = create<GraphState>((set) => ({
   setShowExternalPackages: (show) => set({ showExternalPackages: show }),
   toggleFullScreen: () => set((state) => ({ isFullScreen: !state.isFullScreen })),
   toggleMetricsPanel: () => set((state) => ({ isMetricsPanelOpen: !state.isMetricsPanelOpen })),
+  toggleProjectTree: () => set((state) => ({ isProjectTreeOpen: !state.isProjectTreeOpen })),
   setShowNodeLabels: (show) => set({ showNodeLabels: show }),
 
   setShowPreview: (show) => set({ showPreview: show }),
