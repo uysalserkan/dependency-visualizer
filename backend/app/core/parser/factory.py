@@ -7,6 +7,9 @@ from app.core.parser.python import PythonParser
 from app.core.parser.javascript import JavaScriptParser, TypeScriptParser
 from app.core.parser.go import GoParser
 from app.core.parser.java import JavaParser
+from app.core.parser.ruby import RubyParser
+from app.core.parser.cpp import CppParser
+from app.core.parser.rust import RustParser
 
 
 class ParserRegistry:
@@ -44,6 +47,21 @@ class ParserRegistry:
                 java_parser = JavaParser()
                 for ext in java_parser.get_supported_extensions():
                     cls._parsers[ext] = java_parser
+
+                # Register Ruby parser
+                ruby_parser = RubyParser()
+                for ext in ruby_parser.get_supported_extensions():
+                    cls._parsers[ext] = ruby_parser
+
+                # Register C/C++ parser
+                cpp_parser = CppParser()
+                for ext in cpp_parser.get_supported_extensions():
+                    cls._parsers[ext] = cpp_parser
+
+                # Register Rust parser
+                rust_parser = RustParser()
+                for ext in rust_parser.get_supported_extensions():
+                    cls._parsers[ext] = rust_parser
 
                 cls._initialized = True
             except Exception as e:
@@ -109,4 +127,10 @@ class ParserRegistry:
                 languages.add("Go")
             elif "Java" in parser_name:
                 languages.add("Java")
+            elif "Ruby" in parser_name:
+                languages.add("Ruby")
+            elif "Cpp" in parser_name:
+                languages.add("C/C++")
+            elif "Rust" in parser_name:
+                languages.add("Rust")
         return sorted(list(languages))

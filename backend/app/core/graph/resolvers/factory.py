@@ -7,6 +7,9 @@ from app.core.graph.resolvers.javascript import JavaScriptImportResolver
 from app.core.graph.resolvers.python import PythonImportResolver
 from app.core.graph.resolvers.go import GoImportResolver
 from app.core.graph.resolvers.java import JavaImportResolver
+from app.core.graph.resolvers.ruby import RubyImportResolver
+from app.core.graph.resolvers.cpp import CppImportResolver
+from app.core.graph.resolvers.rust import RustImportResolver
 
 
 def get_resolver(source_file: str | Path, project_root: Path) -> ImportResolver:
@@ -37,6 +40,18 @@ def get_resolver(source_file: str | Path, project_root: Path) -> ImportResolver:
     # Java files
     if ext == ".java":
         return JavaImportResolver(project_root)
+
+    # Ruby files
+    if ext == ".rb":
+        return RubyImportResolver(project_root)
+
+    # C/C++ files
+    if ext in [".c", ".h", ".cpp", ".hpp", ".cc", ".hh", ".cxx"]:
+        return CppImportResolver(project_root)
+
+    # Rust files
+    if ext == ".rs":
+        return RustImportResolver(project_root)
 
     # Default to Python resolver (backward compatibility)
     return PythonImportResolver(project_root)

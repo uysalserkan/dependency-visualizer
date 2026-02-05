@@ -69,7 +69,7 @@ class ImportInfo(BaseModel):
 
     source_file: str = Field(..., description="File containing the import")
     imported_module: str = Field(..., description="Module being imported")
-    import_type: Literal["module", "from"] = Field(..., description="Type of import statement")
+    import_type: str = Field(..., description="Type of import statement (e.g. 'module', 'from', 'require', '#include')")
     line_number: int = Field(..., description="Line number of the import")
 
 

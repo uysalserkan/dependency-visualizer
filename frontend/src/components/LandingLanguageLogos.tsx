@@ -8,6 +8,10 @@ const LANGUAGES = [
   { name: 'TypeScript', hoverColor: '#3178c6' },
   { name: 'Go', hoverColor: '#00add8' },
   { name: 'Java', hoverColor: '#ed8b00' },
+  { name: 'Ruby', hoverColor: '#CC342D' },
+  { name: 'C', hoverColor: '#A8B9CC' },
+  { name: 'C++', hoverColor: '#00599C' },
+  { name: 'Rust', hoverColor: '#dea584' },
 ] as const
 
 export function LandingLanguageLogos() {
