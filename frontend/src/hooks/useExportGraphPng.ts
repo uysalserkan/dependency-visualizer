@@ -33,13 +33,25 @@ const baseOptions = (
   backgroundColor: string,
   filter: (node: HTMLElement) => boolean
 ) => ({
-  pixelRatio: 2,
+  pixelRatio: 1.5, // 2 can be too heavy for large graphs or slow devices
   width,
   height,
   backgroundColor,
   cacheBust: true,
   filter,
+  // Fix for React Flow / SVG heavy apps
+  skipAutoScale: true,
+  fontEmbedCSS: '', 
+  includeQueryParams: true,
+  copyStyles: true,
+  style: {
+    transform: 'none',
+    width: `${width}px`,
+    height: `${height}px`,
+  },
 })
+
+
 
 /** Shared logic for exporting the graph view as PNG or JPEG. */
 export function useExportGraphPng() {
@@ -48,11 +60,20 @@ export function useExportGraphPng() {
   const isDark = useThemeStore((s) => s.isDark)
 
   const filter = useCallback((node: HTMLElement) => {
-    if (node instanceof Element && node.closest?.('[data-skip-export]')) {
+    // Skip controls, panels, and elements explicitly marked to be skipped
+    if (node instanceof Element && (
+      node.closest?.('[data-skip-export]') || 
+      node.classList.contains('react-flow__panel') ||
+      node.classList.contains('react-flow__controls') ||
+      node.classList.contains('react-flow__attribution') ||
+      node.getAttribute('role') === 'dialog' // Skip modals/drawers
+    )) {
       return false
     }
     return true
   }, [])
+
+
 
   const exportImage = useCallback(
     async (format: ExportImageFormat) => {
@@ -70,20 +91,26 @@ export function useExportGraphPng() {
           alert(EXPORT_ERROR_MESSAGE)
           return
         }
+        console.log(`Starting ${format} export...`, { width, height, isDark })
         const backgroundColor = isDark ? '#0f172a' : '#ffffff'
         const opts = baseOptions(width, height, backgroundColor, filter)
         let dataUrl: string
         try {
+          console.log('Attempting html-to-image conversion...')
           dataUrl =
             format === 'jpeg'
               ? await toJpeg(flowWrapperRef, { ...opts, quality: 0.92 })
               : await toPng(flowWrapperRef, opts)
-        } catch {
+          console.log('Conversion successful')
+        } catch (err) {
+          console.warn('First export attempt failed, trying fallback...', err)
           // Fallback: toCanvas then toDataURL (sometimes more reliable with transforms)
           const canvas = await toCanvas(flowWrapperRef, opts)
           const mime = format === 'jpeg' ? 'image/jpeg' : 'image/png'
           dataUrl = canvas.toDataURL(mime, format === 'jpeg' ? 0.92 : undefined)
+          console.log('Fallback successful')
         }
+
         const ext = format === 'jpeg' ? 'jpg' : 'png'
         const a = document.createElement('a')
         a.href = dataUrl

@@ -83,6 +83,7 @@ class GraphAnalyzer:
         """Calculate betweenness centrality for all nodes.
 
         Nodes that lie on many shortest paths (between importers and imported) get higher scores.
+        For large graphs (>2000 nodes), uses an approximation for performance.
 
         Returns:
             Dictionary mapping node IDs to betweenness centrality scores (normalized 0-1)
@@ -96,10 +97,20 @@ class GraphAnalyzer:
             return self._betweenness_cache
 
         try:
-            self._betweenness_cache = nx.betweenness_centrality(
-                self.graph,
-                normalized=True,
-            )
+            # For large graphs, approximation is much faster
+            if len(nodes) > 2000:
+                k = min(len(nodes), 500)  # Sample a subset of nodes
+                logger.info(f"Using approximated betweenness centrality (k={k}) for large graph.")
+                self._betweenness_cache = nx.betweenness_centrality(
+                    self.graph,
+                    k=k,
+                    normalized=True,
+                )
+            else:
+                self._betweenness_cache = nx.betweenness_centrality(
+                    self.graph,
+                    normalized=True,
+                )
             return self._betweenness_cache
         except Exception as e:
             logger.warning("Betweenness centrality failed, using zeros", error=str(e))
@@ -124,6 +135,7 @@ class GraphAnalyzer:
 
         Uses reverse graph so that "how quickly can others reach you" = high for
         heavily imported modules. Original graph gives "how quickly you reach others".
+        Skipped for large graphs (>2000 nodes) for performance.
 
         Returns:
             Dictionary mapping node ID to score (0-1). Zeros on failure or unreachable.
@@ -134,6 +146,12 @@ class GraphAnalyzer:
         nodes = list(self.graph.nodes())
         if not nodes:
             self._closeness_cache = {}
+            return self._closeness_cache
+
+        # Skip for large graphs as it's slow and less critical than other metrics
+        if len(nodes) > 2000:
+            logger.info("Skipping closeness centrality for large graph.")
+            self._closeness_cache = {n: 0.0 for n in nodes}
             return self._closeness_cache
 
         try:
@@ -169,7 +187,7 @@ class GraphAnalyzer:
             rev = self.graph.reverse()
             self._eigenvector_cache = nx.eigenvector_centrality(
                 rev,
-                max_iter=1000,
+                max_iter=5000,
                 tol=1.0e-6,
             )
             return self._eigenvector_cache

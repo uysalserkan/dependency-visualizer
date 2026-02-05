@@ -41,7 +41,7 @@ dev = [
 ]
 
 # All test* scripts are optional: not required for build or run. Install dev deps: uv sync --extra dev
-[tool.uv.scripts]
+[project.scripts]
 test = "pytest"
 "test:cov" = "pytest --cov=app --cov-report=html"
 "test:verbose" = "pytest -v"

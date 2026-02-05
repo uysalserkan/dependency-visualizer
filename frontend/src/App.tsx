@@ -5,9 +5,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useIsCompact } from '@/hooks/useMediaQuery'
 import { SourceImportModal } from '@/components/SourceImportModal'
 import { GraphVisualization } from '@/components/GraphVisualization'
-import { NodeListView } from '@/components/NodeListView'
 import { MetricsPanel } from '@/components/MetricsPanel'
-import { InsightsPanel } from '@/components/InsightsPanel'
 import { ExportButton } from '@/components/ExportButton'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { ProjectFolderTree } from '@/components/ProjectFolderTree'
@@ -19,19 +17,14 @@ import { SideDrawer } from '@/components/analysis/SideDrawer'
 import { MobileBottomPanel } from '@/components/analysis/MobileBottomPanel'
 import { useLandingDropZone } from '@/hooks/useLandingDropZone'
 import { useAnalyzeZip } from '@/hooks/useAnalysis'
-import { Network, GitBranch, List, FolderPlus, Star, PanelLeft } from 'lucide-react'
+import { Network, FolderPlus, Star, PanelLeft } from 'lucide-react'
 
 /** GitHub repo URL for "Star on GitHub" link on landing. Set to empty string to hide. */
 const GITHUB_REPO_URL = ''
 
-/** Set to true to re-enable the List view tab. */
-const LIST_VIEW_ENABLED = false
-
 function App() {
   const analysis = useGraphStore((state) => state.analysis)
   const isFullScreen = useGraphStore((state) => state.isFullScreen)
-  const viewMode = useGraphStore((state) => state.viewMode)
-  const setViewMode = useGraphStore((state) => state.setViewMode)
   const selectedNode = useGraphStore((state) => state.selectedNode)
   const selectedFolderPath = useGraphStore((state) => state.selectedFolderPath)
   const [sourceImportOpen, setSourceImportOpen] = useState(false)
@@ -184,33 +177,7 @@ function App() {
               className={`transition-all duration-300 flex flex-col gap-2 flex-1 min-h-0 ${isFullScreen ? 'h-full w-full' : 'lg:col-span-8 min-h-[500px] lg:min-h-0'}`}
               aria-label="Main view"
             >
-              {!isFullScreen && (
-                <div className="shrink-0 flex rounded-lg border border-gray-200 dark:border-white/5 bg-gray-50/80 dark:bg-slate-800/50 p-1 w-fit" role="tablist" aria-label="View mode">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={viewMode === 'graph'}
-                    onClick={() => setViewMode('graph')}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'graph' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'}`}
-                  >
-                    <GitBranch className="w-4 h-4" aria-hidden />
-                    Graph
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={viewMode === 'list'}
-                    aria-disabled={!LIST_VIEW_ENABLED}
-                    onClick={() => LIST_VIEW_ENABLED && setViewMode('list')}
-                    disabled={!LIST_VIEW_ENABLED}
-                    title={LIST_VIEW_ENABLED ? 'List view' : 'List view (disabled)'}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'} ${!LIST_VIEW_ENABLED ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <List className="w-4 h-4" aria-hidden />
-                    List
-                  </button>
-                </div>
-              )}
+
               <div
                 className={`flex-1 min-h-0 rounded-xl max-md:rounded-none border border-gray-200 dark:border-white/5 overflow-hidden relative z-0 backdrop-blur-md bg-white/80 dark:bg-slate-900/50 ${isFullScreen ? 'shadow-2xl' : ''}`}
               >
@@ -227,23 +194,19 @@ function App() {
                     </button>
                   </div>
                 )}
-                {viewMode === 'graph' || !LIST_VIEW_ENABLED ? (
-                  <GraphVisualization
-                    analysis={analysis}
-                    onOpenSettings={() => setSettingsOpen(true)}
-                  />
-                ) : (
-                  <NodeListView />
-                )}
+                <GraphVisualization
+                  analysis={analysis}
+                  onOpenSettings={() => setSettingsOpen(true)}
+                />
               </div>
             </section>
 
             {!isFullScreen && (
               <aside className="hidden lg:block lg:col-span-2 space-y-5 overflow-y-auto" aria-label="Metrics and insights">
                 <MetricsPanel />
-                <InsightsPanel />
               </aside>
             )}
+
 
             {!isFullScreen && isCompact && (
               <>
@@ -269,7 +232,6 @@ function App() {
                 >
                   <div className="overflow-y-auto px-4 pb-6 space-y-5">
                     <MetricsPanel />
-                    <InsightsPanel />
                   </div>
                 </MobileBottomPanel>
               </>

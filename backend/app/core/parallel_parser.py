@@ -96,7 +96,10 @@ class ParallelParser:
         go_extractor_extensions = {
             ".py", ".pyi", 
             ".js", ".jsx", ".mjs", ".cjs", 
-            ".ts", ".tsx"
+            ".ts", ".tsx",
+            ".rb",
+            ".c", ".h", ".cpp", ".hpp", ".cc", ".hh", ".cxx",
+            ".rs",
         }
         
         files_for_python_parser = []

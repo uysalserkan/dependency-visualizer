@@ -5,7 +5,9 @@ import { useExportGraphPng } from '@/hooks/useExportGraphPng'
 
 export function ExportButton() {
   const analysis = useGraphStore((state) => state.analysis)
-  const { exportPng, exportImage, canExport } = useExportGraphPng()
+  const flowWrapperRef = useGraphStore((state) => state.flowWrapperRef)
+  const { exportPng, exportImage } = useExportGraphPng()
+  const canExport = Boolean(analysis && flowWrapperRef)
 
   if (!analysis) return null
 

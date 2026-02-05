@@ -33,6 +33,9 @@ import {
   CLUSTER_ID_PREFIX,
 } from '@/lib/folderGroups'
 import { ClusterNode } from './nodes/ClusterNode'
+import { useIsCompact } from '@/hooks/useMediaQuery'
+import { SideDrawer } from './analysis/SideDrawer'
+import { SlidersHorizontal } from 'lucide-react'
 
 export function filterNodesAndEdgesByFolder(
   analysis: AnalysisResult,
@@ -105,6 +108,8 @@ function GraphFlow({
   effectiveEdges: import('@/lib/folderGroups').EffectiveEdge[]
   onOpenSettings?: () => void
 }) {
+  const isCompact = useIsCompact()
+  const [isToolboxOpen, setIsToolboxOpen] = useState(false)
   const nodeById = useMemo(
     () =>
       new Map(
@@ -607,22 +612,45 @@ function GraphFlow({
         className="rounded-xl"
       >
         <Background />
-        <Panel position="top-right">
-          {onOpenSettings && (
-            <button
-              type="button"
-              onClick={onOpenSettings}
-              className="p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg hover:bg-gray-100 dark:hover:bg-slate-800/80 transition-colors"
-              aria-label="Open settings"
-              title="Settings"
-            >
-              <Settings className="w-4 h-4 text-gray-600 dark:text-slate-400" aria-hidden />
-            </button>
-          )}
-        </Panel>
-        <Panel position="bottom-center">
-          <GraphFloatingControls />
-        </Panel>
+                <Panel position="top-right" className="flex flex-col gap-2">
+                  {onOpenSettings && (
+                    <button
+                      type="button"
+                      onClick={onOpenSettings}
+                      className="p-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-md hover:bg-gray-100 dark:hover:bg-slate-800/80 transition-colors"
+                      aria-label="Open settings"
+                      title="Settings"
+                    >
+                      <Settings className="w-4 h-4 text-gray-600 dark:text-slate-400" aria-hidden />
+                    </button>
+                  )}
+                  {isCompact && (
+                    <button
+                      type="button"
+                      onClick={() => setIsToolboxOpen(true)}
+                      className="p-2 rounded-lg border border-transparent bg-indigo-500 text-white shadow-md hover:bg-indigo-600 transition-all active:scale-95"
+                      aria-label="Open graph controls"
+                      title="Graph Controls"
+                    >
+                      <SlidersHorizontal className="w-4 h-4" />
+                    </button>
+                  )}
+                </Panel>
+        
+
+        {isCompact ? (
+          <SideDrawer open={isToolboxOpen} onClose={() => setIsToolboxOpen(false)} title="Graph Controls">
+            <GraphFloatingControls showLabels />
+          </SideDrawer>
+        ) : (
+          <Panel position="bottom-center">
+            <GraphFloatingControls />
+          </Panel>
+        )}
+
+
+
+
       </ReactFlow>
       </ViewportLODContext.Provider>
       </EdgeBundlingContext.Provider>
@@ -691,7 +719,6 @@ function GraphFlow({
 
 export function GraphVisualization({ analysis, onOpenSettings }: GraphVisualizationProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null)
-  const rafRef = useRef<number | null>(null)
   const setFlowWrapperRef = useGraphStore((s) => s.setFlowWrapperRef)
   const isDark = useThemeStore((s) => s.isDark)
   const graphBackground = useGraphStore((s) => s.graphBackground)
@@ -724,31 +751,20 @@ export function GraphVisualization({ analysis, onOpenSettings }: GraphVisualizat
     (el: HTMLDivElement | null) => {
       wrapperRef.current = el
       setFlowWrapperRef(el)
-      // Re-set ref after layout so header Export button sees it (store update after paint)
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current)
-        rafRef.current = null
-      }
-      if (el) {
-        rafRef.current = requestAnimationFrame(() => {
-          setFlowWrapperRef(el)
-        })
-      }
-    },
-    [setFlowWrapperRef]
-  )
-  useEffect(
-    () => () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current)
-        rafRef.current = null
-      }
-      setFlowWrapperRef(null)
     },
     [setFlowWrapperRef]
   )
 
+  useEffect(() => {
+    // Ensure the ref is in the store when the component mounts
+    if (wrapperRef.current) {
+      setFlowWrapperRef(wrapperRef.current)
+    }
+    return () => setFlowWrapperRef(null)
+  }, [setFlowWrapperRef])
+
   const backgroundClass =
+
     graphBackground === 'grid'
       ? isDark
         ? 'blueprint-grid'
