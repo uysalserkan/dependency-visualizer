@@ -6,16 +6,30 @@ from slowapi.errors import RateLimitExceeded
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+from app.config import settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
 
 # Shared limiter instance (used by main.py and by route decorators in routes.py)
+def _rate_limit_storage_uri() -> str:
+    """Resolve rate limit storage URI based on settings.
+
+    Returns:
+        Storage URI for slowapi (memory:// or redis://...)
+    """
+    if settings.RATE_LIMIT_STORAGE_URL:
+        return settings.RATE_LIMIT_STORAGE_URL
+    if settings.REDIS_ENABLED:
+        return settings.REDIS_URL
+    return "memory://"
+
+
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["100/minute"],  # Global fallback
-    storage_uri="memory://",  # In-memory storage (use Redis for production scale)
+    storage_uri=_rate_limit_storage_uri(),
     headers_enabled=True,  # Add rate limit headers to responses
 )
 

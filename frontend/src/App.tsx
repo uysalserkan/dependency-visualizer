@@ -210,7 +210,7 @@ function App() {
           </div>
                 ) : (
                             <div
-                              className={`transition-all duration-300 ease-in-out min-h-0 ${isFullScreen ? 'fixed inset-0 z-40 bg-gray-50 dark:bg-slate-950 p-4' : 'flex flex-col lg:flex-row gap-5 h-[calc(100vh-120px)] lg:overflow-hidden'}`}
+                              className={`transition-all duration-300 ease-in-out min-h-0 ${isFullScreen ? 'fixed inset-0 z-40 bg-gray-50 dark:bg-slate-950 p-4' : 'flex flex-col lg:flex-row gap-5 max-md:h-[calc(100svh-120px)] lg:h-[calc(100vh-120px)] lg:overflow-hidden'}`}
                             >
                               {!isFullScreen && isProjectTreeOpen && (
                                 <aside className="hidden lg:flex lg:w-72 shrink-0 flex-col min-h-0 overflow-y-auto transition-all duration-300 ease-in-out" aria-label="Analysis controls">
@@ -265,20 +265,20 @@ function App() {
                             </button>
                           </div>
                         )}
-                                        <GraphVisualization
-                                          analysis={analysis}
-                                          onOpenSettings={() => setSettingsOpen(true)}
-                                        />
-                        
-                                        {/* Floating Toolbar - Trapped inside the graph area */}
-                                        {!isFullScreen && !isCompact && (
-                                          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 w-full max-w-[calc(100%-32px)] flex justify-center pointer-events-none">
-                                            <GraphFloatingControls className="pointer-events-auto" />
-                                          </div>
-                                        )}
-                                      </div>
-                                    </section>
-                                
+                                                        <GraphVisualization
+                                                          analysis={analysis}
+                                                          onOpenSettings={() => setSettingsOpen(true)}
+                                                        />
+                                        
+                                                        {/* Floating Toolbar - Trapped inside the graph area */}
+                                                        {!isCompact && (
+                                                          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 w-full max-w-[calc(100%-32px)] flex justify-center pointer-events-none">
+                                                            <GraphFloatingControls className="pointer-events-auto" />
+                                                          </div>
+                                                        )}
+                                                      </div>
+                                                    </section>
+                                                                        
                     {!isFullScreen && isMetricsPanelOpen && (
                       <aside className="hidden lg:block lg:w-80 shrink-0 space-y-5 overflow-y-auto transition-all duration-300 ease-in-out" aria-label="Metrics and insights">
                         <MetricsPanel />

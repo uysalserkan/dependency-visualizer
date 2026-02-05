@@ -1,9 +1,12 @@
 """Health check utilities for production monitoring."""
 
+import socket
 from pathlib import Path
 
 from app.config import settings
 from app.core.logging import get_logger
+from app.core.redis_cache import RedisCache
+from app.core.go_extractor import _go_extractor_available
 
 logger = get_logger(__name__)
 
@@ -73,9 +76,62 @@ async def run_health_checks() -> dict:
     
     # Check cache database
     cache_ok, cache_msg = await check_cache_database()
-    results["cache"] = {
+    results["cache_db"] = {
         "status": "healthy" if cache_ok else "unhealthy",
         "message": cache_msg,
+    }
+
+    # Check Redis cache (if enabled)
+    redis_ok = True
+    redis_msg = "Redis disabled"
+    if settings.REDIS_ENABLED:
+        redis_cache = RedisCache()
+        redis_ok = redis_cache.is_available
+        redis_msg = "Redis reachable" if redis_ok else "Redis unavailable"
+    results["redis"] = {
+        "status": "healthy" if redis_ok else "unhealthy",
+        "message": redis_msg,
+    }
+
+    # Check Jaeger (if tracing enabled)
+    jaeger_ok = True
+    jaeger_msg = "Tracing disabled"
+    if settings.TRACING_ENABLED:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.settimeout(1.0)
+            sock.connect((settings.JAEGER_HOST, settings.JAEGER_PORT))
+            sock.close()
+            jaeger_ok = True
+            jaeger_msg = "Jaeger endpoint reachable"
+        except Exception as e:
+            jaeger_ok = False
+            jaeger_msg = f"Jaeger unreachable: {e}"
+    results["jaeger"] = {
+        "status": "healthy" if jaeger_ok else "unhealthy",
+        "message": jaeger_msg,
+    }
+
+    # Check Sentry config (if enabled)
+    sentry_ok = True
+    sentry_msg = "Sentry not configured"
+    if settings.SENTRY_DSN:
+        sentry_ok = True
+        sentry_msg = "Sentry configured"
+    results["sentry"] = {
+        "status": "healthy" if sentry_ok else "degraded",
+        "message": sentry_msg,
+    }
+
+    # Check Go extractor (if required)
+    go_ok = True
+    go_msg = "Extractor backend not set to go"
+    if settings.EXTRACTOR_BACKEND == "go":
+        go_ok = _go_extractor_available()
+        go_msg = "Go extractor available" if go_ok else "Go extractor missing or not executable"
+    results["go_extractor"] = {
+        "status": "healthy" if go_ok else "unhealthy",
+        "message": go_msg,
     }
     
     # Check filesystem
@@ -86,7 +142,7 @@ async def run_health_checks() -> dict:
     }
     
     # Overall status
-    all_healthy = cache_ok and fs_ok
+    all_healthy = cache_ok and fs_ok and redis_ok and jaeger_ok and go_ok
     results["status"] = "healthy" if all_healthy else "degraded"
     
     return results

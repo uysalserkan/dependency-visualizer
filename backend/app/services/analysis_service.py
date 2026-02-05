@@ -32,6 +32,7 @@ from app.core.parallel_parser import ParallelParser
 from app.core.repository import clone_repository, remove_clone, repo_cache_id
 from app.core.validation import validate_project_path
 from app.core.zip_extract import extract_zip_to_temp
+from app.core.redis_cache import RedisCache
 
 logger = get_logger(__name__)
 
@@ -165,6 +166,7 @@ class AnalysisService:
         executor: ThreadPoolExecutor | None = None,
     ):
         self.cache = cache
+        self.redis_cache = RedisCache() if settings.REDIS_ENABLED else None
         self.parallel_parser = parallel_parser or ParallelParser(max_workers=settings.MAX_WORKERS)
         self.executor = executor or ThreadPoolExecutor(max_workers=settings.MAX_WORKERS)
         self._memory_cache: OrderedDict = OrderedDict()
@@ -175,11 +177,12 @@ class AnalysisService:
         project_path: str,
         ignore_patterns: list[str] | None = None,
         extractor_backend: str | None = None,
+        metrics_level: str | None = None,
     ) -> AnalysisResult:
         active_analyses.inc()
         try:
             path = validate_project_path(project_path)
-            return await self._analyze_project_at_path(path, ignore_patterns, extractor_backend)
+            return await self._analyze_project_at_path(path, ignore_patterns, extractor_backend, metrics_level)
         finally:
             active_analyses.dec()
 
@@ -188,6 +191,7 @@ class AnalysisService:
         path: Path,
         ignore_patterns: list[str] | None,
         extractor_backend: str | None,
+        metrics_level: str | None,
     ) -> AnalysisResult:
         loop = asyncio.get_event_loop()
         discoverer = FileDiscovery(ignore_patterns=ignore_patterns or [])
@@ -212,9 +216,25 @@ class AnalysisService:
                 )
                 
                 graph_builder = self._build_graph(path, all_imports)
-                analyzer, metrics, pagerank, betweenness = self._analyze_graph(graph_builder)
+                analyzer, metrics, pagerank, betweenness = self._analyze_graph(
+                    graph_builder, metrics_level
+                )
                 warnings = self._add_cycle_warnings(metrics, warnings, path)
-                raw_nodes = graph_builder.get_nodes(pagerank, betweenness)
+                resolved_level = self._resolve_metrics_level(metrics_level)
+                cycle_participation = {} if resolved_level == "light" else analyzer.get_cycle_participation()
+                node_depths = {} if resolved_level == "light" else analyzer.get_node_depths()
+                closeness = {} if resolved_level == "light" else analyzer.get_closeness_centrality()
+                eigenvector = {} if resolved_level == "light" else analyzer.get_eigenvector_centrality()
+                external_ratio_map = {} if resolved_level == "light" else analyzer.get_external_ratio_per_node()
+                raw_nodes = graph_builder.get_nodes(
+                    pagerank,
+                    betweenness,
+                    cycle_participation=cycle_participation,
+                    node_depths=node_depths,
+                    closeness_scores=closeness,
+                    eigenvector_scores=eigenvector,
+                    external_ratio_map=external_ratio_map,
+                )
                 nodes = _enrich_nodes_with_file_stats(path, raw_nodes)
                 nodes = _enrich_nodes_with_blame(path, nodes)
 
@@ -227,7 +247,7 @@ class AnalysisService:
                     warnings=warnings,
                 )
                 
-                self.cache.save(result)
+                self._save_to_caches(result)
                 self._cache_in_memory(cache_key, (result, analyzer, graph_builder))
                 analysis_requests_total.labels(status="success").inc()
                 
@@ -242,10 +262,11 @@ class AnalysisService:
         return graph_builder
     
     def _analyze_graph(
-        self, graph_builder: GraphBuilder
+        self, graph_builder: GraphBuilder, metrics_level: str | None = None
     ) -> tuple[GraphAnalyzer, GraphMetrics, dict, dict]:
         analyzer = GraphAnalyzer(graph_builder.get_graph())
-        metrics = analyzer.compute_metrics()
+        resolved_level = self._resolve_metrics_level(metrics_level)
+        metrics = analyzer.compute_metrics(light=resolved_level == "light")
         pagerank = analyzer.get_pagerank_scores()
         betweenness = analyzer.get_betweenness_centrality()
         return analyzer, metrics, pagerank, betweenness
@@ -257,6 +278,7 @@ class AnalysisService:
         branch: str | None = None,
         ignore_patterns: list[str] | None = None,
         extractor_backend: str | None = None,
+        metrics_level: str | None = None,
     ) -> AnalysisResult:
         # ... (implementation as it was)
         if not settings.REPOSITORY_ANALYSIS_ENABLED:
@@ -273,10 +295,14 @@ class AnalysisService:
             clone_path = await loop.run_in_executor(
                 self.executor, lambda: clone_repository(repository_url, branch=branch)
             )
-            result = await self._analyze_project_at_path(clone_path, ignore_patterns, extractor_backend)
-            file_contents = await loop.run_in_executor(
-                self.executor, lambda: _collect_file_contents(clone_path, result.nodes)
+            result = await self._analyze_project_at_path(
+                clone_path, ignore_patterns, extractor_backend, metrics_level
             )
+            file_contents = None
+            if settings.REPOSITORY_FILE_PREVIEW_ENABLED:
+                file_contents = await loop.run_in_executor(
+                    self.executor, lambda: _collect_file_contents(clone_path, result.nodes)
+                )
             repo_result = AnalysisResult(
                 id=cache_id,
                 project_path=repository_url,
@@ -286,7 +312,7 @@ class AnalysisService:
                 warnings=result.warnings,
                 file_contents=file_contents,
             )
-            self.cache.save(repo_result)
+            self._save_to_caches(repo_result)
             self._cache_in_memory(cache_id, (repo_result, None, None))
             return repo_result
         finally:
@@ -299,6 +325,7 @@ class AnalysisService:
         filename: str,
         ignore_patterns: list[str] | None = None,
         extractor_backend: str | None = None,
+        metrics_level: str | None = None,
     ) -> AnalysisResult:
         if not settings.ZIP_ANALYSIS_ENABLED:
             raise ValidationError("ZIP analysis is disabled")
@@ -310,10 +337,14 @@ class AnalysisService:
                 settings.MAX_ZIP_SIZE_MB,
                 settings.MAX_ZIP_UNCOMPRESSED_MB,
             )
-            result = await self._analyze_project_at_path(extract_path, ignore_patterns, extractor_backend)
-            file_contents = await loop.run_in_executor(
-                self.executor, lambda: _collect_file_contents(extract_path, result.nodes)
+            result = await self._analyze_project_at_path(
+                extract_path, ignore_patterns, extractor_backend, metrics_level
             )
+            file_contents = None
+            if settings.REPOSITORY_FILE_PREVIEW_ENABLED:
+                file_contents = await loop.run_in_executor(
+                    self.executor, lambda: _collect_file_contents(extract_path, result.nodes)
+                )
             zip_analysis_id = str(uuid.uuid4())
             zip_result = AnalysisResult(
                 id=zip_analysis_id,
@@ -327,7 +358,7 @@ class AnalysisService:
             self.cache.delete(result.id)
             if result.id in self._memory_cache:
                 del self._memory_cache[result.id]
-            self.cache.save(zip_result)
+            self._save_to_caches(zip_result)
             self._cache_in_memory(zip_analysis_id, (zip_result, None, None))
             return zip_result
         finally:
@@ -339,6 +370,12 @@ class AnalysisService:
             cache_hits_total.inc()
             self._memory_cache.move_to_end(analysis_id)
             return self._memory_cache[analysis_id][0]
+        if self.redis_cache and self.redis_cache.is_available:
+            result = self.redis_cache.get(analysis_id)
+            if result:
+                cache_hits_total.inc()
+                self._cache_in_memory(analysis_id, (result, None, None))
+                return result
         result = self.cache.get(analysis_id)
         if result:
             cache_hits_total.inc()
@@ -349,6 +386,8 @@ class AnalysisService:
     def delete_analysis(self, analysis_id: str):
         if analysis_id in self._memory_cache:
             del self._memory_cache[analysis_id]
+        if self.redis_cache:
+            self.redis_cache.delete(analysis_id)
         if not self.cache.delete(analysis_id):
             raise NotFoundError(f"Analysis not found: {analysis_id}")
 
@@ -380,6 +419,19 @@ class AnalysisService:
             self._memory_cache.popitem(last=False)
         self._memory_cache[analysis_id] = data
         memory_cache_size.set(len(self._memory_cache))
+
+    def _save_to_caches(self, result: AnalysisResult) -> None:
+        """Persist analysis result to configured caches."""
+        if self.redis_cache:
+            self.redis_cache.save(result)
+        self.cache.save(result)
+
+    @staticmethod
+    def _resolve_metrics_level(metrics_level: str | None) -> str:
+        """Resolve metrics level using defaults."""
+        if metrics_level in ("light", "full"):
+            return metrics_level
+        return settings.METRICS_LEVEL_DEFAULT
     
     @staticmethod
     def _add_cycle_warnings(metrics: GraphMetrics, warnings: list[str], project_path: Path) -> list[str]:

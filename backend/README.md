@@ -23,6 +23,9 @@ uv sync --dev
 ```bash
 # Development mode with auto-reload
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Production (Gunicorn)
+uv run gunicorn app.main:app -c gunicorn_conf.py
 ```
 
 The API will be available at `http://localhost:8000`
@@ -42,6 +45,9 @@ Analyze a Python project and return dependency graph.
   "ignore_patterns": [".venv", "__pycache__"]
 }
 ```
+
+**Optional fields:**
+- `metrics_level`: `"light"` or `"full"` (default uses `METRICS_LEVEL_DEFAULT`)
 
 **Response:**
 ```json
@@ -66,6 +72,21 @@ Retrieve a cached analysis result.
 
 ### DELETE /api/analysis/{analysis_id}
 Delete a cached analysis result.
+
+### POST /api/analyze/async
+Queue a background analysis (requires `CELERY_ENABLED=true`).
+
+**Response:**
+```json
+{
+  "task_id": "celery-task-id",
+  "analysis_id": "uuid",
+  "status": "queued"
+}
+```
+
+### GET /api/jobs/{task_id}
+Get background job status (and whether result is available).
 
 ## Development
 
@@ -103,3 +124,8 @@ uv run test:verbose
 - **Graph Layer**: NetworkX-based dependency analysis
 - **API Layer**: FastAPI REST endpoints
 - **Extensible**: Plugin system for additional languages
+
+## Production Notes
+- Use Redis for rate limiting storage: `RATE_LIMIT_STORAGE_URL=redis://...`
+- Enable Redis cache: `REDIS_ENABLED=true`
+- Enable Celery for async analysis: `CELERY_ENABLED=true`

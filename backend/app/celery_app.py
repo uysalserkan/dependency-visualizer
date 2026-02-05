@@ -1,6 +1,7 @@
 """Celery configuration for background tasks."""
 
 from celery import Celery
+from datetime import timedelta
 
 from app.config import settings
 from app.core.logging import get_logger
@@ -36,6 +37,15 @@ celery_app.conf.task_routes = {
     "app.tasks.analysis.*": {"queue": "analysis"},
     "app.tasks.export.*": {"queue": "export"},
     "app.tasks.maintenance.*": {"queue": "maintenance"},
+}
+
+# Periodic tasks
+celery_app.conf.beat_schedule = {
+    "cleanup-cache": {
+        "task": "app.tasks.maintenance.cleanup_cache",
+        "schedule": timedelta(hours=settings.CACHE_CLEANUP_INTERVAL_HOURS),
+        "args": (settings.CACHE_TTL_DAYS,),
+    }
 }
 
 logger.info("Celery configured", broker=settings.CELERY_BROKER_URL)

@@ -28,10 +28,14 @@ RUN uv sync --no-dev
 
 # Copy application code
 COPY backend/app ./app
+COPY backend/gunicorn_conf.py ./gunicorn_conf.py
 
 # Use Go extractor for faster parsing (optional: override with env to disable)
 ENV GO_EXTRACTOR_PATH=/usr/local/bin/extractor
 
+# Production defaults (override via env)
+ENV WEB_CONCURRENCY=2
+
 EXPOSE 8000
 
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "gunicorn", "app.main:app", "-c", "gunicorn_conf.py"]

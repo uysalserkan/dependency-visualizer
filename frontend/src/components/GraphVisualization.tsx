@@ -613,7 +613,7 @@ function GraphFlow({
       >
         <Background />
                         <Panel position="top-right" className="flex flex-col gap-2">
-                          {onOpenSettings && (
+                          {onOpenSettings && !isCompact && (
                             <button
                               type="button"
                               onClick={onOpenSettings}

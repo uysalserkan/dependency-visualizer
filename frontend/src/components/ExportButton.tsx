@@ -35,7 +35,7 @@ export function ExportButton() {
         className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white bg-transparent hover:bg-gray-100 dark:hover:bg-white/5 transition-colors duration-200"
       >
         <Download className="w-4 h-4" />
-        <span>Export</span>
+        <span className="hidden sm:inline">Export</span>
       </button>
 
       <div className="absolute right-0 mt-2 w-52 rounded-xl border border-gray-200 dark:border-white/5 bg-white dark:bg-slate-900/95 backdrop-blur-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 shadow-2xl py-2" role="menu">

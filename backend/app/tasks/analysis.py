@@ -13,11 +13,13 @@ from app.core.graph.analyzer import GraphAnalyzer
 from app.core.graph.builder import GraphBuilder
 from app.core.logging import get_logger
 from app.core.parallel_parser import ParallelParser
+from app.core.redis_cache import RedisCache
 from app.core.validation import validate_project_path
 from app.services.analysis_service import (
     _enrich_nodes_with_blame,
     _enrich_nodes_with_file_stats,
 )
+from app.config import settings
 
 logger = get_logger(__name__)
 
@@ -27,12 +29,19 @@ class AnalysisTask(Task):
     
     _cache = None
     _parser = None
+    _redis_cache = None
     
     @property
     def cache(self):
         if self._cache is None:
             self._cache = CacheDB()
         return self._cache
+
+    @property
+    def redis_cache(self):
+        if self._redis_cache is None and settings.REDIS_ENABLED:
+            self._redis_cache = RedisCache()
+        return self._redis_cache
     
     @property
     def parser(self):
@@ -53,6 +62,8 @@ def analyze_project_task(
     project_path: str,
     ignore_patterns: list[str] | None = None,
     analysis_id: str | None = None,
+    extractor_backend: str | None = None,
+    metrics_level: str | None = None,
 ) -> dict:
     """Analyze a project in background.
     
@@ -123,7 +134,7 @@ def analyze_project_task(
         )
         
         # Parse files
-        all_imports, warnings = self.parser.parse_files(files, path)
+        all_imports, warnings = self.parser.parse_files(files, path, extractor_backend)
         
         # Update state: building graph
         self.update_state(
@@ -152,14 +163,15 @@ def analyze_project_task(
         
         # Analyze graph
         analyzer = GraphAnalyzer(graph_builder.get_graph())
-        metrics = analyzer.compute_metrics()
+        resolved_metrics_level = metrics_level if metrics_level in ("light", "full") else settings.METRICS_LEVEL_DEFAULT
+        metrics = analyzer.compute_metrics(light=resolved_metrics_level == "light")
         pagerank = analyzer.get_pagerank_scores()
         betweenness = analyzer.get_betweenness_centrality()
-        cycle_participation = analyzer.get_cycle_participation()
-        node_depths = analyzer.get_node_depths()
-        closeness = analyzer.get_closeness_centrality()
-        eigenvector = analyzer.get_eigenvector_centrality()
-        external_ratio_map = analyzer.get_external_ratio_per_node()
+        cycle_participation = {} if resolved_metrics_level == "light" else analyzer.get_cycle_participation()
+        node_depths = {} if resolved_metrics_level == "light" else analyzer.get_node_depths()
+        closeness = {} if resolved_metrics_level == "light" else analyzer.get_closeness_centrality()
+        eigenvector = {} if resolved_metrics_level == "light" else analyzer.get_eigenvector_centrality()
+        external_ratio_map = {} if resolved_metrics_level == "light" else analyzer.get_external_ratio_per_node()
 
         # Create result (enrich nodes with file stats and commit hash like sync analysis)
         from app.api.models import AnalysisResult
@@ -185,6 +197,8 @@ def analyze_project_task(
         )
         
         # Cache result
+        if self.redis_cache:
+            self.redis_cache.save(result)
         self.cache.save(result)
         
         logger.info(

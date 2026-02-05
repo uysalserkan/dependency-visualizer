@@ -6,6 +6,7 @@ from pydantic_settings import BaseSettings
 
 
 ExtractorBackend = Literal["auto", "python", "go"]
+MetricsLevel = Literal["light", "full"]
 
 
 class Settings(BaseSettings):
@@ -41,6 +42,7 @@ class Settings(BaseSettings):
     
     # Performance
     MAX_WORKERS: int | None = None  # None = use CPU count
+    METRICS_LEVEL_DEFAULT: MetricsLevel = "full"
     
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = True
@@ -49,6 +51,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_ANALYZE_ZIP: str = "5/minute"  # Zip upload + extract + analyze
     RATE_LIMIT_EXPORT: str = "20/minute"   # Medium endpoint
     RATE_LIMIT_DEFAULT: str = "30/minute"  # Light endpoints
+    RATE_LIMIT_STORAGE_URL: str | None = "memory://"
     
     # Monitoring
     METRICS_ENABLED: bool = True
@@ -67,6 +70,7 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
     CELERY_ENABLED: bool = False  # Disabled by default
+    CACHE_CLEANUP_INTERVAL_HOURS: int = 24
     
     # Redis Cache
     REDIS_URL: str = "redis://localhost:6379/2"
@@ -103,6 +107,7 @@ class Settings(BaseSettings):
     # File preview cache for repo analyses (so View File works without disk)
     REPOSITORY_FILE_PREVIEW_MAX_FILES: int = 500  # max files to store content for
     REPOSITORY_FILE_PREVIEW_MAX_BYTES_PER_FILE: int = 1024 * 100  # 100KB per file (same as MAX_FILE_PREVIEW_SIZE)
+    REPOSITORY_FILE_PREVIEW_ENABLED: bool = True
 
     # ZIP analysis (upload .zip, extract to temp, analyze)
     ZIP_ANALYSIS_ENABLED: bool = True

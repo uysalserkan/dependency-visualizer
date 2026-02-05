@@ -25,6 +25,10 @@ class AnalyzeRequest(BaseModel):
         default=None,
         description="Override extractor: 'python' or 'go'. If omitted, uses EXTRACTOR_BACKEND config.",
     )
+    metrics_level: Literal["light", "full"] | None = Field(
+        default=None,
+        description="Metrics detail: 'light' skips heavy metrics, 'full' computes all. Default uses METRICS_LEVEL_DEFAULT.",
+    )
 
     @field_validator("ignore_patterns")
     @classmethod
@@ -54,6 +58,10 @@ class AnalyzeRepositoryRequest(BaseModel):
     extractor_backend: Literal["python", "go"] | None = Field(
         default=None,
         description="Override extractor: 'python' or 'go'. If omitted, uses EXTRACTOR_BACKEND config.",
+    )
+    metrics_level: Literal["light", "full"] | None = Field(
+        default=None,
+        description="Metrics detail: 'light' skips heavy metrics, 'full' computes all. Default uses METRICS_LEVEL_DEFAULT.",
     )
 
     @field_validator("ignore_patterns")
@@ -226,6 +234,25 @@ class AnalysisResultResponse(BaseModel):
     edges: list[Edge] = Field(..., description="Graph edges")
     metrics: GraphMetrics = Field(..., description="Analysis metrics")
     warnings: list[str] = Field(default_factory=list, description="Analysis warnings")
+
+
+class AsyncAnalysisResponse(BaseModel):
+    """Response for async analysis submission."""
+
+    task_id: str = Field(..., description="Celery task ID")
+    analysis_id: str = Field(..., description="Analysis ID for later retrieval")
+    status: str = Field(..., description="Initial task status")
+    message: str | None = Field(default=None, description="Optional status message")
+
+
+class JobStatusResponse(BaseModel):
+    """Status response for background jobs."""
+
+    task_id: str = Field(..., description="Celery task ID")
+    status: str = Field(..., description="Celery task status")
+    analysis_id: str | None = Field(default=None, description="Associated analysis ID if available")
+    result_available: bool = Field(default=False, description="Whether analysis result is available")
+    error: str | None = Field(default=None, description="Error message if task failed")
 
 
 class InsightItem(BaseModel):

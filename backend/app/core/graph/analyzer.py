@@ -311,8 +311,11 @@ class GraphAnalyzer:
             "severity": "high" if len(cycle) <= 3 else "medium",
         }
 
-    def compute_metrics(self) -> GraphMetrics:
-        """Compute comprehensive graph metrics.
+    def compute_metrics(self, light: bool = False) -> GraphMetrics:
+        """Compute graph metrics.
+
+        Args:
+            light: If True, skip heavy cycle detection and some expensive stats.
 
         Returns:
             GraphMetrics object
@@ -325,8 +328,8 @@ class GraphAnalyzer:
         # Total imports (edges)
         total_imports = self.graph.number_of_edges()
 
-        # Find circular dependencies
-        circular_deps = self._find_circular_dependencies()
+        # Find circular dependencies (skip if light)
+        circular_deps = [] if light else self._find_circular_dependencies()
 
         # Calculate maximum import depth
         max_depth = self._calculate_max_depth()
@@ -339,9 +342,9 @@ class GraphAnalyzer:
         ]
 
         # Get detailed cycle information
-        cycle_details = [self.get_cycle_details(cycle) for cycle in circular_deps[:10]]
+        cycle_details = [] if light else [self.get_cycle_details(cycle) for cycle in circular_deps[:10]]
 
-        # Compute statistics
+        # Compute statistics (uses pagerank; still ok for light)
         statistics = self._compute_statistics(internal_nodes)
 
         # Phase 1: graph density and total cycles
@@ -376,14 +379,19 @@ class GraphAnalyzer:
             if self.graph.nodes[u].get("node_type") != "external"
             and self.graph.nodes[v].get("node_type") != "external"
         )
-        # Cycle length stats
-        cycle_lengths = [len(c) for c in circular_deps]
-        avg_cycle_length = (
-            sum(cycle_lengths) / len(cycle_lengths) if cycle_lengths else 0.0
-        )
-        max_cycle_length = max(cycle_lengths) if cycle_lengths else 0
-        # Largest strongly connected component (internal nodes only for "tangled core")
-        largest_scc_size = self._largest_scc_size(internal_nodes)
+        # Cycle length stats (skip if light)
+        if light:
+            avg_cycle_length = 0.0
+            max_cycle_length = 0
+            largest_scc_size = 0
+        else:
+            cycle_lengths = [len(c) for c in circular_deps]
+            avg_cycle_length = (
+                sum(cycle_lengths) / len(cycle_lengths) if cycle_lengths else 0.0
+            )
+            max_cycle_length = max(cycle_lengths) if cycle_lengths else 0
+            # Largest strongly connected component (internal nodes only for "tangled core")
+            largest_scc_size = self._largest_scc_size(internal_nodes)
 
         return GraphMetrics(
             total_files=len(internal_nodes),
@@ -394,7 +402,7 @@ class GraphAnalyzer:
             cycle_details=cycle_details,
             statistics=statistics,
             graph_density=round(graph_density, 4),
-            total_cycles=len(circular_deps),
+            total_cycles=0 if light else len(circular_deps),
             external_edges_ratio=round(external_edges_ratio, 4),
             entry_points_count=entry_points_count,
             external_node_count=external_node_count,

@@ -2,20 +2,23 @@
 
 from pathlib import Path
 
+import uuid
+
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
 
 from app.api.models import (
     AnalyzeRequest,
     AnalyzeRepositoryRequest,
-    AnalysisResult,
     AnalysisResultResponse,
+    AsyncAnalysisResponse,
     FileBlameResponse,
     FilePreview,
     InsightItem,
     InsightsResponse,
     InsightsSummary,
     ImportInfo,
+    JobStatusResponse,
 )
 from app.config import settings
 from app.core.exceptions import AnalysisError, NotFoundError, SecurityError, ValidationError
@@ -25,6 +28,8 @@ from app.core.logging import get_logger
 from app.dependencies import get_analysis_service, get_cache_db, get_language_detector
 from app.middleware.rate_limiter import limiter
 from app.services.analysis_service import AnalysisService, _normalize_file_key
+from app.celery_app import celery_app
+from app.tasks.analysis import analyze_project_task
 
 logger = get_logger(__name__)
 
@@ -59,6 +64,7 @@ async def analyze_project(
         project_path=analyze_request.project_path,
         ignore_patterns=analyze_request.ignore_patterns,
         extractor_backend=analyze_request.extractor_backend,
+        metrics_level=analyze_request.metrics_level,
     )
     # Return Response so slowapi can inject rate-limit headers (exclude file_contents to keep payload small)
     return JSONResponse(
@@ -94,6 +100,7 @@ async def analyze_repository(
         branch=body.branch,
         ignore_patterns=body.ignore_patterns,
         extractor_backend=body.extractor_backend,
+        metrics_level=body.metrics_level,
     )
     return JSONResponse(
         content=result.model_dump(exclude={"file_contents"}),
@@ -106,6 +113,10 @@ async def analyze_repository(
 async def analyze_zip(
     request: Request,
     file: UploadFile = File(..., description="Project archive (.zip)"),
+    metrics_level: str | None = Query(
+        None,
+        description="Metrics detail: 'light' or 'full'. Default uses METRICS_LEVEL_DEFAULT.",
+    ),
     service: AnalysisService = Depends(get_analysis_service),
 ):
     """Analyze a project from an uploaded ZIP file.
@@ -118,6 +129,8 @@ async def analyze_zip(
     if not filename.lower().endswith(".zip"):
         raise HTTPException(status_code=400, detail="File must be a .zip archive")
     try:
+        if metrics_level not in (None, "light", "full"):
+            raise HTTPException(status_code=400, detail="metrics_level must be 'light' or 'full'")
         content = await file.read()
         if not content:
             raise HTTPException(status_code=400, detail="Empty file")
@@ -127,7 +140,7 @@ async def analyze_zip(
                 status_code=400,
                 detail=f"ZIP file too large (max {settings.MAX_ZIP_SIZE_MB} MB)",
             )
-        result = await service.analyze_zip(content, filename)
+        result = await service.analyze_zip(content, filename, metrics_level=metrics_level)
         return JSONResponse(
             content=result.model_dump(exclude={"file_contents"}),
             status_code=200,
@@ -203,6 +216,61 @@ async def import_graph(
     except Exception as e:
         logger.exception("Graph import failed", filename=file.filename)
         raise HTTPException(status_code=500, detail="Failed to import graph")
+
+
+@router.post("/analyze/async", response_model=AsyncAnalysisResponse)
+@limiter.limit(settings.RATE_LIMIT_ANALYZE, exempt_when=_rate_limit_exempt)
+async def analyze_project_async(
+    request: Request,
+    analyze_request: AnalyzeRequest,
+):
+    """Queue a project analysis in the background (Celery)."""
+    if not settings.CELERY_ENABLED:
+        raise HTTPException(status_code=501, detail="Background analysis is disabled")
+    analysis_id = str(uuid.uuid4())
+    task = analyze_project_task.delay(
+        analyze_request.project_path,
+        analyze_request.ignore_patterns,
+        analysis_id,
+        analyze_request.extractor_backend,
+        analyze_request.metrics_level,
+    )
+    return AsyncAnalysisResponse(
+        task_id=task.id,
+        analysis_id=analysis_id,
+        status="queued",
+        message="Analysis queued",
+    )
+
+
+@router.get("/jobs/{task_id}", response_model=JobStatusResponse)
+async def get_job_status(
+    task_id: str,
+    service: AnalysisService = Depends(get_analysis_service),
+):
+    """Get background job status and whether result is available."""
+    if not settings.CELERY_ENABLED:
+        raise HTTPException(status_code=501, detail="Background analysis is disabled")
+    async_result = celery_app.AsyncResult(task_id)
+    status = async_result.status
+    analysis_id = None
+    error = None
+    if status == "SUCCESS":
+        try:
+            result = async_result.result or {}
+            analysis_id = result.get("id") or result.get("analysis_id")
+        except Exception:
+            analysis_id = None
+    elif status in {"FAILURE", "REVOKED"}:
+        error = str(async_result.result)
+    result_available = bool(analysis_id and service.get_analysis(analysis_id))
+    return JobStatusResponse(
+        task_id=task_id,
+        status=status,
+        analysis_id=analysis_id,
+        result_available=result_available,
+        error=error,
+    )
 
 
 @router.get("/analysis/{analysis_id}/file-preview")
