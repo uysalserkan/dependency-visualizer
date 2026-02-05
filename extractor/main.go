@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"import_visualizer/extractor/extract"
+	"dependency_visualizer/extractor/extract"
 )
 
 type Request struct {
