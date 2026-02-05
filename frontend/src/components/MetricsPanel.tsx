@@ -1,12 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { FileCode, Layers, TrendingUp, Eye, ArrowDownCircle, ArrowUpCircle, Network, Folder } from 'lucide-react'
 import { useGraphStore } from '@/stores/graphStore'
 import { computeFolderMetrics } from '@/lib/folderMetrics'
-import { FilePreviewModal } from './FilePreviewModal'
-import { ExternalPackagesModal } from './ExternalPackagesModal'
-import { ImportRelationsModal } from './ImportRelationsModal'
-import { ImportListModal } from './ImportListModal'
-import { EntryPointsModal } from './EntryPointsModal'
 import type { Node, GraphMetrics } from '@/types/api'
 import type { FolderMetrics } from '@/lib/folderMetrics'
 
@@ -48,14 +43,15 @@ function getImpactText(node: Node): string | null {
 }
 
 export function MetricsPanel() {
-  const { analysis, selectedNode, setSelectedNode, selectedFolderPath } = useGraphStore()
-
-  const [showPreview, setShowPreview] = useState(false)
-  const [showExternalPackages, setShowExternalPackages] = useState(false)
-  const [showImportRelations, setShowImportRelations] = useState(false)
-  const [showOutgoingModal, setShowOutgoingModal] = useState(false)
-  const [showIncomingModal, setShowIncomingModal] = useState(false)
-  const [showEntryPoints, setShowEntryPoints] = useState(false)
+  const { 
+    analysis, 
+    selectedNode, 
+    selectedFolderPath,
+    setShowPreview,
+    setShowImportRelations,
+    setShowOutgoingModal,
+    setShowIncomingModal,
+  } = useGraphStore()
 
   const folderMetrics = useMemo(
     () =>
@@ -64,6 +60,7 @@ export function MetricsPanel() {
         : null,
     [analysis, selectedFolderPath]
   )
+
 
   const display = useMemo((): {
     total_files: number
@@ -314,30 +311,11 @@ export function MetricsPanel() {
                   )}
                 </div>
               </div>
-            </div>
-
-          )}
-        </div>
-      </div>
-
-      {showPreview && selectedNode && selectedNode.node_type !== 'external' && (
-        <FilePreviewModal analysisId={analysis.id} filePath={selectedNode.file_path} projectPath={analysis.project_path} onClose={() => setShowPreview(false)} />
-      )}
-      {showExternalPackages && (
-        <ExternalPackagesModal analysis={analysis} onClose={() => setShowExternalPackages(false)} onSelectNode={(nodeId) => { const node = analysis.nodes.find(n => n.id === nodeId); if (node) setSelectedNode(node); }} />
-      )}
-      {showImportRelations && selectedNode && (
-        <ImportRelationsModal analysis={analysis} selectedNode={selectedNode} onClose={() => setShowImportRelations(false)} onSelectNode={(node) => { setSelectedNode(node); setShowImportRelations(false); }} />
-      )}
-      {showOutgoingModal && selectedNode && (
-        <ImportListModal variant="outgoing" analysis={analysis} selectedNode={selectedNode} onClose={() => setShowOutgoingModal(false)} onSelectNode={(node) => { setSelectedNode(node); setShowOutgoingModal(false); }} />
-      )}
-      {showIncomingModal && selectedNode && (
-        <ImportListModal variant="incoming" analysis={analysis} selectedNode={selectedNode} onClose={() => setShowIncomingModal(false)} onSelectNode={(node) => { setSelectedNode(node); setShowIncomingModal(false); }} />
-      )}
-      {showEntryPoints && (
-        <EntryPointsModal analysis={analysis} selectedFolderPath={selectedFolderPath} onClose={() => setShowEntryPoints(false)} onSelectNode={(node) => { setSelectedNode(node); setShowEntryPoints(false); }} />
-      )}
-    </>
-  )
-}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )
+            }
+            

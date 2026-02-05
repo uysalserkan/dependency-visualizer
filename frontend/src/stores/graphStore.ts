@@ -47,6 +47,17 @@ interface GraphState {
   flowWrapperRef: HTMLElement | null
   /** Heatmap: color nodes by refactor hotspot metric (off = default node colors). */
   heatmapMode: HeatmapMode
+  /** Whether the right metrics panel is visible. */
+  isMetricsPanelOpen: boolean
+  
+  // Modal states
+  showPreview: boolean
+  showExternalPackagesModal: boolean
+  showImportRelations: boolean
+  showOutgoingModal: boolean
+  showIncomingModal: boolean
+  showEntryPoints: boolean
+
   /** Folder paths that are collapsed in the graph (shown as one cluster node). */
   collapsedFolders: string[]
 
@@ -60,7 +71,16 @@ interface GraphState {
   setShowStdlibNodes: (show: boolean) => void
   setShowExternalPackages: (show: boolean) => void
   toggleFullScreen: () => void
+  toggleMetricsPanel: () => void
   setShowNodeLabels: (show: boolean) => void
+
+  // Modal actions
+  setShowPreview: (show: boolean) => void
+  setShowExternalPackagesModal: (show: boolean) => void
+  setShowImportRelations: (show: boolean) => void
+  setShowOutgoingModal: (show: boolean) => void
+  setShowIncomingModal: (show: boolean) => void
+  setShowEntryPoints: (show: boolean) => void
   setNodeSizeMode: (mode: NodeSizeMode) => void
   setEdgeWidth: (width: EdgeWidthPreset) => void
   setNodeShape: (shape: NodeShapeType) => void
@@ -100,6 +120,15 @@ export const useGraphStore = create<GraphState>((set) => ({
   graphBackground: 'dots',
   flowWrapperRef: null,
   heatmapMode: 'off',
+  isMetricsPanelOpen: true,
+  
+  showPreview: false,
+  showExternalPackagesModal: false,
+  showImportRelations: false,
+  showOutgoingModal: false,
+  showIncomingModal: false,
+  showEntryPoints: false,
+
   collapsedFolders: [],
 
   setAnalysis: (analysis) => set({ analysis, selectedNode: null, selectedFolderPath: null }),
@@ -112,7 +141,15 @@ export const useGraphStore = create<GraphState>((set) => ({
   setShowStdlibNodes: (show) => set({ showStdlibNodes: show }),
   setShowExternalPackages: (show) => set({ showExternalPackages: show }),
   toggleFullScreen: () => set((state) => ({ isFullScreen: !state.isFullScreen })),
+  toggleMetricsPanel: () => set((state) => ({ isMetricsPanelOpen: !state.isMetricsPanelOpen })),
   setShowNodeLabels: (show) => set({ showNodeLabels: show }),
+
+  setShowPreview: (show) => set({ showPreview: show }),
+  setShowExternalPackagesModal: (show) => set({ showExternalPackagesModal: show }),
+  setShowImportRelations: (show) => set({ showImportRelations: show }),
+  setShowOutgoingModal: (show) => set({ showOutgoingModal: show }),
+  setShowIncomingModal: (show) => set({ showIncomingModal: show }),
+  setShowEntryPoints: (show) => set({ showEntryPoints: show }),
   setNodeSizeMode: (mode) => set({ nodeSizeMode: mode }),
   setEdgeWidth: (width) => set({ edgeWidth: width }),
   setNodeShape: (shape) => set({ nodeShape: shape }),
