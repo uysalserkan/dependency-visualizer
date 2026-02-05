@@ -1,7 +1,8 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { FileUp, Loader2 } from 'lucide-react'
 import { useImportGraph } from '@/hooks/useImportGraph'
 import { useGraphStore } from '@/stores/graphStore'
+import { cn } from '@/lib/utils'
 
 const ACCEPT = '.json,.graphml,.gexf'
 const MAX_SIZE_MB = 50
@@ -13,6 +14,7 @@ interface ImportGraphProps {
 
 export function ImportGraph({ onSuccessCallback }: ImportGraphProps = {}) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
   const { mutate: importGraph, isPending, error } = useImportGraph()
   const setAnalysis = useGraphStore((state) => state.setAnalysis)
 
@@ -31,20 +33,48 @@ export function ImportGraph({ onSuccessCallback }: ImportGraphProps = {}) {
     })
   }
 
+  const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (!file) return
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      return
+    }
+    importGraph(file, {
+      onSuccess: (data) => {
+        setAnalysis(data)
+        if (inputRef.current) inputRef.current.value = ''
+        onSuccessCallback?.()
+      },
+    })
+  }
+
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-white/5 backdrop-blur-md bg-white/80 dark:bg-slate-900/50 p-6 space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/5 flex items-center justify-center">
-          <FileUp className="w-4 h-4 text-gray-500 dark:text-slate-400" aria-hidden />
+    <div className="rounded-2xl border border-white/10 backdrop-blur-md bg-white/5 p-6 space-y-4">
+      <label
+        className={cn(
+          'group flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-all duration-200',
+          'border-white/10 bg-black/30 text-white/70 hover:border-white/20 hover:bg-black/40',
+          isDragging && 'border-purple-400/60 bg-purple-500/10 text-white'
+        )}
+        onDragEnter={() => setIsDragging(true)}
+        onDragOver={(e) => {
+          e.preventDefault()
+          setIsDragging(true)
+        }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={handleDrop}
+      >
+        <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/5">
+          <FileUp className="h-5 w-5 text-white/70" aria-hidden />
+        </span>
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-white">
+            Drag &amp; drop graph file or click to browse
+          </p>
+          <p className="text-xs text-white/40 font-mono">.json · .graphml · .gexf (max {MAX_SIZE_MB}MB)</p>
         </div>
-        <h2 className="text-sm font-bold text-gray-900 dark:text-white tracking-tight">
-          Import Graph
-        </h2>
-      </div>
-      <p className="text-xs text-gray-500 dark:text-slate-500 leading-relaxed">
-        Load a previously exported graph file
-      </p>
-      <label className="block">
         <span className="sr-only">Choose graph file</span>
         <input
           ref={inputRef}
@@ -52,17 +82,17 @@ export function ImportGraph({ onSuccessCallback }: ImportGraphProps = {}) {
           accept={ACCEPT}
           onChange={handleFileChange}
           disabled={isPending}
-          className="block w-full text-sm text-gray-600 dark:text-slate-400 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border file:border-gray-300 dark:file:border-white/10 file:bg-transparent file:text-gray-700 dark:file:text-white file:font-medium file:cursor-pointer hover:file:bg-gray-100 dark:hover:file:bg-white/5 disabled:opacity-50 file:transition-all file:duration-200 file:text-sm file:font-mono-ui"
+          className="sr-only"
         />
       </label>
       {isPending && (
-        <div className="flex items-center gap-2 text-sm text-slate-500 font-mono-ui">
+        <div className="flex items-center gap-2 text-sm text-white/60 font-mono">
           <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
           <span>Importing…</span>
         </div>
       )}
       {error && (
-        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400 font-mono-ui">
+        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400 font-mono">
           {(error as Error).message}
         </div>
       )}

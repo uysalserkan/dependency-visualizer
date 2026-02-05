@@ -33,26 +33,26 @@ export function SourceImportModal({ open, onClose }: SourceImportModalProps) {
       aria-labelledby="source-import-modal-title"
     >
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
       <div
         className={cn(
           'relative w-full max-w-lg max-h-[90vh] overflow-y-auto',
-          'rounded-2xl border border-gray-200 dark:border-white/10',
-          'bg-white dark:bg-slate-900 shadow-2xl'
+          'rounded-2xl border border-white/10',
+          'bg-[#0B0C15]/80 backdrop-blur-xl shadow-2xl'
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 px-5 py-4 border-b border-gray-200 dark:border-white/5 bg-white dark:bg-slate-900 rounded-t-2xl">
-          <h2 id="source-import-modal-title" className="text-lg font-semibold text-gray-900 dark:text-white">
-            Analyze or import
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 px-5 py-4 border-b border-white/10 bg-[#0B0C15]/90 rounded-t-2xl">
+          <h2 id="source-import-modal-title" className="text-lg font-semibold text-white">
+            Analyze / Import
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+            className="p-2 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500/50"
             aria-label="Close"
           >
             <X className="w-5 h-5" aria-hidden />
@@ -60,7 +60,6 @@ export function SourceImportModal({ open, onClose }: SourceImportModalProps) {
         </div>
         <div className="p-5 space-y-5">
           <SourceAnalyzer onSuccessCallback={onClose} />
-          <div className="text-center text-xs text-gray-500 dark:text-slate-400">or</div>
           <ImportGraph onSuccessCallback={onClose} />
         </div>
       </div>
