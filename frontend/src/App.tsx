@@ -23,7 +23,7 @@ import { ImportListModal } from '@/components/ImportListModal'
 import { EntryPointsModal } from '@/components/EntryPointsModal'
 import { useLandingDropZone } from '@/hooks/useLandingDropZone'
 import { useAnalyzeZip } from '@/hooks/useAnalysis'
-import { Network, FolderPlus, Star, PanelLeft, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Network, FolderPlus, Star, Settings, PanelLeft, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 
 /** GitHub repo URL for "Star on GitHub" link on landing. Set to empty string to hide. */
 const GITHUB_REPO_URL = ''
@@ -118,6 +118,15 @@ function App() {
                         <span className="hidden sm:inline">Star on GitHub</span>
                       </a>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => setSettingsOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                      aria-label="Open settings"
+                    >
+                      <Settings className="w-4 h-4" aria-hidden />
+                      <span className="hidden sm:inline">Settings</span>
+                    </button>
                     <ThemeToggle />
                   </>
                 ) : (
@@ -132,6 +141,15 @@ function App() {
                       <span className="hidden sm:inline">Analyze / Import</span>
                     </button>
                     <ExportButton />
+                    <button
+                      type="button"
+                      onClick={() => setSettingsOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                      aria-label="Open settings"
+                    >
+                      <Settings className="w-4 h-4" aria-hidden />
+                      <span className="hidden sm:inline">Settings</span>
+                    </button>
                     <ThemeToggle />
                   </>
                 )}

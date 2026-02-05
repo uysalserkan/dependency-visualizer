@@ -305,7 +305,11 @@ class AnalysisService:
         extract_path = None
         loop = asyncio.get_event_loop()
         try:
-            extract_path = extract_zip_to_temp(zip_content)
+            extract_path = extract_zip_to_temp(
+                zip_content,
+                settings.MAX_ZIP_SIZE_MB,
+                settings.MAX_ZIP_UNCOMPRESSED_MB,
+            )
             result = await self._analyze_project_at_path(extract_path, ignore_patterns, extractor_backend)
             file_contents = await loop.run_in_executor(
                 self.executor, lambda: _collect_file_contents(extract_path, result.nodes)
