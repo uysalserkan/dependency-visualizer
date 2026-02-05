@@ -15,6 +15,7 @@ import { LandingLanguageLogos } from '@/components/LandingLanguageLogos'
 import { LandingDropOverlay } from '@/components/LandingDropOverlay'
 import { SideDrawer } from '@/components/analysis/SideDrawer'
 import { MobileBottomPanel } from '@/components/analysis/MobileBottomPanel'
+import { GraphFloatingControls } from '@/components/GraphFloatingControls'
 import { FilePreviewModal } from '@/components/FilePreviewModal'
 import { ExternalPackagesModal } from '@/components/ExternalPackagesModal'
 import { ImportRelationsModal } from '@/components/ImportRelationsModal'
@@ -230,13 +231,20 @@ function App() {
                             </button>
                           </div>
                         )}
-                        <GraphVisualization
-                          analysis={analysis}
-                          onOpenSettings={() => setSettingsOpen(true)}
-                        />
-                      </div>
-                    </section>
-        
+                                        <GraphVisualization
+                                          analysis={analysis}
+                                          onOpenSettings={() => setSettingsOpen(true)}
+                                        />
+                        
+                                        {/* Floating Toolbar - Trapped inside the graph area */}
+                                        {!isFullScreen && !isCompact && (
+                                          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 w-full max-w-[calc(100%-32px)] flex justify-center pointer-events-none">
+                                            <GraphFloatingControls className="pointer-events-auto" />
+                                          </div>
+                                        )}
+                                      </div>
+                                    </section>
+                                
                     {!isFullScreen && isMetricsPanelOpen && (
                       <aside className="hidden lg:block lg:w-80 shrink-0 space-y-5 overflow-y-auto transition-all duration-300 ease-in-out" aria-label="Metrics and insights">
                         <MetricsPanel />
