@@ -9,7 +9,7 @@ logger = get_logger(__name__)
 
 # Create Celery app
 celery_app = Celery(
-    "import_visualizer",
+    "dependency_visualizer",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
 )

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Import Visualizer CLI Tool
+Dependency Visualizer CLI Tool
 
 Command-line interface for analyzing projects in CI/CD pipelines.
 """
@@ -211,7 +211,7 @@ def detect_command(args):
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="Import Visualizer CLI - Analyze project dependencies",
+        description="Dependency Visualizer CLI - Analyze project dependencies",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

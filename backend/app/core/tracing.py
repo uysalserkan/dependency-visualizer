@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 
 def setup_tracing(
     app,
-    service_name: str = "import-visualizer-backend",
+    service_name: str = "dependency-visualizer-backend",
     service_version: str = "0.1.0",
     jaeger_host: str = "localhost",
     jaeger_port: int = 6831,

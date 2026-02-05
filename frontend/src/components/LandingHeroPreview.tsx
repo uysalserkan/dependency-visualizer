@@ -140,7 +140,7 @@ export function LandingHeroPreview() {
               <span className="w-2.5 h-2.5 rounded-full bg-[#28c840] shadow-sm" aria-hidden />
             </div>
             <p className="text-[10px] font-medium text-gray-500 dark:text-slate-400 truncate min-w-0">
-              Import Visualizer
+              Dependency Visualizer
             </p>
           </div>
 

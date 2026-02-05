@@ -122,7 +122,7 @@ def load_database_credentials() -> dict[str, str]:
         "port": secrets.get_secret("DB_PORT", default="5432", from_file=True),
         "user": secrets.get_secret("DB_USER", default="postgres", from_file=True),
         "password": secrets.get_secret("DB_PASSWORD", from_file=True),
-        "database": secrets.get_secret("DB_NAME", default="import_visualizer", from_file=True),
+        "database": secrets.get_secret("DB_NAME", default="dependency_visualizer", from_file=True),
     }
 
 

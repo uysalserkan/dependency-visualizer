@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     """Application settings with environment variable support."""
 
     # Application
-    APP_NAME: str = "Import Visualizer API"
+    APP_NAME: str = "Dependency Visualizer API"
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = False
 

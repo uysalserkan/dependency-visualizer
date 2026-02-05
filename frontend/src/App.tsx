@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
-import { BottomSheet } from 'react-spring-bottom-sheet'
 import { useGraphStore } from '@/stores/graphStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
-import { useStableIsMobile } from '@/hooks/useMediaQuery'
+import { useIsCompact } from '@/hooks/useMediaQuery'
 import { SourceImportModal } from '@/components/SourceImportModal'
 import { GraphVisualization } from '@/components/GraphVisualization'
 import { NodeListView } from '@/components/NodeListView'
@@ -17,6 +16,7 @@ import { LandingHeroPreview } from '@/components/LandingHeroPreview'
 import { LandingLanguageLogos } from '@/components/LandingLanguageLogos'
 import { LandingDropOverlay } from '@/components/LandingDropOverlay'
 import { SideDrawer } from '@/components/analysis/SideDrawer'
+import { MobileBottomPanel } from '@/components/analysis/MobileBottomPanel'
 import { useLandingDropZone } from '@/hooks/useLandingDropZone'
 import { useAnalyzeZip } from '@/hooks/useAnalysis'
 import { Network, GitBranch, List, FolderPlus, Star, PanelLeft } from 'lucide-react'
@@ -37,7 +37,7 @@ function App() {
   const [sourceImportOpen, setSourceImportOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const stableIsMobile = useStableIsMobile()
+  const isCompact = useIsCompact()
   const isLanding = !analysis
   const setAnalysis = useGraphStore((state) => state.setAnalysis)
   const { mutate: analyzeZip } = useAnalyzeZip()
@@ -75,7 +75,7 @@ function App() {
                 </div>
                 <div className="min-w-0">
                   <h1 className="text-base font-semibold text-gray-900 dark:text-white tracking-tight truncate">
-                    Import Visualizer
+                    Dependency Visualizer
                   </h1>
                   {analysis && (
                     <p className="text-xs text-gray-500 dark:text-slate-500 truncate font-mono-ui mt-0.5">
@@ -172,16 +172,16 @@ function App() {
           </div>
         ) : (
           <div
-            className={`transition-all duration-300 ease-in-out min-h-0 ${isFullScreen ? 'fixed inset-0 z-40 bg-gray-50 dark:bg-slate-950 p-4' : 'flex flex-col md:grid md:grid-cols-12 gap-5 h-[calc(100vh-120px)] md:overflow-hidden overflow-y-auto'}`}
+            className={`transition-all duration-300 ease-in-out min-h-0 ${isFullScreen ? 'fixed inset-0 z-40 bg-gray-50 dark:bg-slate-950 p-4' : 'flex flex-col lg:grid lg:grid-cols-12 gap-5 h-[calc(100vh-120px)] lg:overflow-hidden overflow-y-auto'}`}
           >
             {!isFullScreen && (
-              <aside className="hidden md:flex md:col-span-2 flex-col min-h-0 overflow-y-auto" aria-label="Analysis controls">
+              <aside className="hidden lg:flex lg:col-span-2 flex-col min-h-0 overflow-y-auto" aria-label="Analysis controls">
                 <ProjectFolderTree />
               </aside>
             )}
 
             <section
-              className={`transition-all duration-300 flex flex-col gap-2 flex-1 min-h-0 ${isFullScreen ? 'h-full w-full' : 'md:col-span-8 min-h-[500px] md:min-h-0'}`}
+              className={`transition-all duration-300 flex flex-col gap-2 flex-1 min-h-0 ${isFullScreen ? 'h-full w-full' : 'lg:col-span-8 min-h-[500px] lg:min-h-0'}`}
               aria-label="Main view"
             >
               {!isFullScreen && (
@@ -215,7 +215,7 @@ function App() {
                 className={`flex-1 min-h-0 rounded-xl max-md:rounded-none border border-gray-200 dark:border-white/5 overflow-hidden relative z-0 backdrop-blur-md bg-white/80 dark:bg-slate-900/50 ${isFullScreen ? 'shadow-2xl' : ''}`}
               >
                 {!isFullScreen && (
-                  <div className="absolute top-3 left-3 z-10 md:hidden" aria-hidden>
+                  <div className="absolute top-3 left-3 z-10 lg:hidden" aria-hidden>
                     <button
                       type="button"
                       onClick={() => setDrawerOpen(true)}
@@ -239,39 +239,39 @@ function App() {
             </section>
 
             {!isFullScreen && (
-              <aside className="hidden md:block md:col-span-2 space-y-5 overflow-y-auto" aria-label="Metrics and insights">
+              <aside className="hidden lg:block lg:col-span-2 space-y-5 overflow-y-auto" aria-label="Metrics and insights">
                 <MetricsPanel />
                 <InsightsPanel />
               </aside>
             )}
 
-            {!isFullScreen && stableIsMobile && (
+            {!isFullScreen && isCompact && (
               <>
-                <div className="md:hidden">
-                  <SideDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+                <div className="lg:hidden">
+                  <SideDrawer
+                    open={drawerOpen}
+                    onClose={() => setDrawerOpen(false)}
+                    title="Project files"
+                  >
                     <div className="p-4">
                       <ProjectFolderTree />
                     </div>
                   </SideDrawer>
                 </div>
-                <BottomSheet
-                  open
-                  snapPoints={({ maxHeight, minHeight }: { maxHeight: number; minHeight: number }) => [minHeight, maxHeight * 0.4, maxHeight * 0.85]}
-                  defaultSnap={({ snapPoints }: { snapPoints: number[] }) => snapPoints[0]}
-                  header={
-                    <div className="px-4 py-3 border-b border-gray-200 dark:border-white/10 bg-white dark:bg-slate-900">
-                      <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {selectedNode ? 'Module Details' : selectedFolderPath ? 'Folder Metrics' : 'Project Metrics'}
-                      </h2>
-                    </div>
+                <MobileBottomPanel
+                  title={
+                    selectedNode
+                      ? 'Module Details'
+                      : selectedFolderPath
+                        ? 'Folder Metrics'
+                        : 'Project Metrics'
                   }
-                  blocking={false}
                 >
                   <div className="overflow-y-auto px-4 pb-6 space-y-5">
                     <MetricsPanel />
                     <InsightsPanel />
                   </div>
-                </BottomSheet>
+                </MobileBottomPanel>
               </>
             )}
           </div>
@@ -282,7 +282,7 @@ function App() {
         className={`shrink-0 py-5 border-t border-gray-200 dark:border-white/5 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md ${isFullScreen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
       >
         <div className="max-w-[1800px] mx-auto px-6 lg:px-10 text-center text-xs text-gray-500 dark:text-slate-500 font-mono-ui">
-          Import Visualizer — Analyze and visualize project dependencies
+          Dependency Visualizer — Analyze and visualize project dependencies
         </div>
       </footer>
 

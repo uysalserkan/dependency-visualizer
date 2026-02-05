@@ -691,6 +691,7 @@ function GraphFlow({
 
 export function GraphVisualization({ analysis, onOpenSettings }: GraphVisualizationProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null)
+  const rafRef = useRef<number | null>(null)
   const setFlowWrapperRef = useGraphStore((s) => s.setFlowWrapperRef)
   const isDark = useThemeStore((s) => s.isDark)
   const graphBackground = useGraphStore((s) => s.graphBackground)
@@ -724,16 +725,28 @@ export function GraphVisualization({ analysis, onOpenSettings }: GraphVisualizat
       wrapperRef.current = el
       setFlowWrapperRef(el)
       // Re-set ref after layout so header Export button sees it (store update after paint)
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
       if (el) {
-        const rafId = requestAnimationFrame(() => {
+        rafRef.current = requestAnimationFrame(() => {
           setFlowWrapperRef(el)
         })
-        return () => cancelAnimationFrame(rafId)
       }
     },
     [setFlowWrapperRef]
   )
-  useEffect(() => () => setFlowWrapperRef(null), [setFlowWrapperRef])
+  useEffect(
+    () => () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+      setFlowWrapperRef(null)
+    },
+    [setFlowWrapperRef]
+  )
 
   const backgroundClass =
     graphBackground === 'grid'

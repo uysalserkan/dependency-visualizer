@@ -38,7 +38,7 @@ if settings.SENTRY_DSN:
             StarletteIntegration(transaction_style="endpoint"),
             FastApiIntegration(transaction_style="endpoint"),
         ],
-        release=f"import-visualizer@{settings.APP_VERSION}",
+        release=f"dependency-visualizer@{settings.APP_VERSION}",
     )
     logger.info("Sentry error tracking initialized", environment=settings.SENTRY_ENVIRONMENT)
 
@@ -116,7 +116,7 @@ async def health_check():
     return {
         "status": "healthy",
         "version": settings.APP_VERSION,
-        "service": "import-visualizer-api",
+        "service": "dependency-visualizer-api",
     }
 
 

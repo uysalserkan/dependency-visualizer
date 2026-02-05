@@ -450,7 +450,7 @@ function Dashboard() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 p-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Import Visualizer</h1>
+          <h1 className="text-2xl font-bold">Dependency Visualizer</h1>
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
             <span className="text-sm text-gray-600">

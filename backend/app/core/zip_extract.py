@@ -45,7 +45,7 @@ def extract_zip_to_temp(
 
     extract_path = None
     try:
-        extract_path = Path(tempfile.mkdtemp(prefix="import_visualizer_zip_"))
+        extract_path = Path(tempfile.mkdtemp(prefix="dependency_visualizer_zip_"))
         total_uncompressed = 0
 
         with zipfile.ZipFile(io.BytesIO(zip_content), "r") as zf:

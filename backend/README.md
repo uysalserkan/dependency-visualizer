@@ -1,4 +1,4 @@
-# Import Visualizer Backend
+# Dependency Visualizer Backend
 
 FastAPI backend service for analyzing Python import dependencies.
 

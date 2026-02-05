@@ -1,1 +1,1 @@
-"""Import Visualizer Backend."""
+"""Dependency Visualizer Backend."""

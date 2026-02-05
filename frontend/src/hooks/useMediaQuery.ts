@@ -26,6 +26,11 @@ export function useIsMobile(): boolean {
   return useMediaQuery('(max-width: 767px)')
 }
 
+/** True when viewport width < 1024px (Tailwind max-lg). */
+export function useIsCompact(): boolean {
+  return useMediaQuery('(max-width: 1023px)')
+}
+
 const STABLE_MOBILE_DELAY_MS = 150
 
 /**

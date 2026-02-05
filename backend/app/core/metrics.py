@@ -47,7 +47,7 @@ app_info = Info(
 )
 
 
-def setup_metrics(app, app_name: str = "import_visualizer", app_version: str = "0.1.0"):
+def setup_metrics(app, app_name: str = "dependency_visualizer", app_version: str = "0.1.0"):
     """Configure Prometheus metrics for FastAPI application.
     
     Args:
