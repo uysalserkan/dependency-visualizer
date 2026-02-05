@@ -65,6 +65,12 @@ func run(req Request) Response {
 			imports = append(imports, extract.ExtractPython(src, f)...)
 		case extract.IsJavaScriptFile(f):
 			imports = append(imports, extract.ExtractJavaScript(src, f)...)
+		case extract.IsRubyFile(f):
+			imports = append(imports, extract.ExtractRuby(src, f)...)
+		case extract.IsCppFile(f):
+			imports = append(imports, extract.ExtractCpp(src, f)...)
+		case extract.IsRustFile(f):
+			imports = append(imports, extract.ExtractRust(src, f)...)
 		default:
 			// Unsupported extension; only warn if file looks non-empty
 			if len(strings.TrimSpace(src)) > 0 {
