@@ -22,7 +22,7 @@ import { ImportRelationsModal } from '@/components/ImportRelationsModal'
 import { ImportListModal } from '@/components/ImportListModal'
 import { EntryPointsModal } from '@/components/EntryPointsModal'
 import { useLandingDropZone } from '@/hooks/useLandingDropZone'
-import { useAnalyzeZip } from '@/hooks/useAnalysis'
+import { useAnalyzeZip, useAnalyzeRepository } from '@/hooks/useAnalysis'
 import { Network, FolderPlus, Star, Settings, PanelLeft, PanelRightClose, PanelRightOpen, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 
 /** GitHub repo URL for "Star on GitHub" link on landing. Set to empty string to hide. */
@@ -38,7 +38,7 @@ function App() {
   const selectedNode = useGraphStore((state) => state.selectedNode)
   const setSelectedNode = useGraphStore((state) => state.setSelectedNode)
   const selectedFolderPath = useGraphStore((state) => state.selectedFolderPath)
-  
+
   // Modal states & actions from store
   const showPreview = useGraphStore((state) => state.showPreview)
   const setShowPreview = useGraphStore((state) => state.setShowPreview)
@@ -56,10 +56,45 @@ function App() {
   const [sourceImportOpen, setSourceImportOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [repoAnalysisError, setRepoAnalysisError] = useState<string | null>(null)
   const isCompact = useIsCompact()
   const isLanding = !analysis
   const setAnalysis = useGraphStore((state) => state.setAnalysis)
   const { mutate: analyzeZip } = useAnalyzeZip()
+  const { mutate: analyzeRepository, isPending: isAnalyzingRepo } = useAnalyzeRepository()
+
+  // Check for repo query param on mount
+  useEffect(() => {
+    // Only run once on mount
+    const params = new URLSearchParams(window.location.search)
+    const repoUrl = params.get('repo')
+
+    if (repoUrl && !analysis) {
+      // Clean up URL to remove the query param so refresh doesn't re-trigger (optional but good UX)
+      // window.history.replaceState({}, '', window.location.pathname)
+
+      analyzeRepository(
+        { repository_url: repoUrl },
+        {
+          onSuccess: (data) => setAnalysis(data),
+          onError: (error) => {
+            console.error("Failed to analyze repo from URL:", error)
+            let message = "Failed to analyze repository."
+            if (error.message.includes("404") || error.message.toLowerCase().includes("not found")) {
+              message = "Repository not found. Please check the URL and ensure it is public."
+            } else if (error.message.toLowerCase().includes("timeout")) {
+              message = "Analysis timed out. The repository might be too large."
+            } else {
+              message = error.message || "An unexpected error occurred."
+            }
+            setRepoAnalysisError(message)
+          }
+        }
+      )
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const { isDragging, onDrop } = useLandingDropZone(isLanding, (files) => {
     if (files?.length === 1 && files[0].name.toLowerCase().endsWith('.zip')) {
       analyzeZip(files[0], { onSuccess: (data) => setAnalysis(data) })
@@ -84,6 +119,60 @@ function App() {
       {isLanding && (
         <LandingDropOverlay visible={isDragging} onDrop={onDrop} />
       )}
+
+      {isAnalyzingRepo && (
+        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-white/80 dark:bg-slate-950/80 backdrop-blur-md">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
+            <p className="text-lg font-medium text-gray-700 dark:text-slate-300">Analyzing Repository...</p>
+            <p className="text-sm text-gray-500 dark:text-slate-500">Cloning and processing dependencies</p>
+          </div>
+        </div>
+      )}
+
+      {repoAnalysisError && (
+        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-white/80 dark:bg-slate-950/80 backdrop-blur-md p-4">
+          <div className="max-w-md w-full bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/50 rounded-2xl shadow-2xl p-8 flex flex-col items-center text-center space-y-6">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center text-red-600 dark:text-red-400">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Analysis Failed</h3>
+              <p className="text-gray-600 dark:text-slate-400 text-sm leading-relaxed">
+                {repoAnalysisError}
+              </p>
+            </div>
+
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={() => {
+                  setRepoAnalysisError(null)
+                  // Remove query param
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete('repo');
+                  window.history.replaceState({}, '', url);
+                  window.location.reload();
+                }}
+                className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                Go Home
+              </button>
+              <button
+                onClick={() => {
+                  setRepoAnalysisError(null);
+                  window.location.reload();
+                }}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 shadow-lg shadow-red-500/20 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
       {!isFullScreen && (
         <header className="shrink-0 sticky top-0 z-50 backdrop-blur-md bg-white/70 dark:bg-slate-900/40 border-b border-gray-100 dark:border-white/[0.06]">
           <div className="max-w-[1800px] mx-auto px-6 lg:px-10 py-3.5">
@@ -208,94 +297,94 @@ function App() {
               </div>
             </div>
           </div>
-                ) : (
-                            <div
-                              className={`transition-all duration-300 ease-in-out min-h-0 ${isFullScreen ? 'fixed inset-0 z-40 bg-gray-50 dark:bg-slate-950 p-4' : 'flex flex-col lg:flex-row gap-5 max-md:h-[calc(100svh-120px)] lg:h-[calc(100vh-120px)] lg:overflow-hidden'}`}
-                            >
-                              {!isFullScreen && isProjectTreeOpen && (
-                                <aside className="hidden lg:flex lg:w-72 shrink-0 flex-col min-h-0 overflow-y-auto transition-all duration-300 ease-in-out" aria-label="Analysis controls">
-                                  <ProjectFolderTree />
-                                </aside>
-                              )}
-                  
-                              <section
-                                className={`transition-all duration-300 flex flex-col gap-2 min-h-0 flex-1 min-w-0 ${isFullScreen ? 'h-full w-full' : 'lg:h-full'}`}
-                                aria-label="Main view"
-                              >
-                                <div
-                                  className={`flex-1 min-h-0 rounded-xl max-md:rounded-none border border-gray-200 dark:border-white/5 overflow-hidden relative z-0 backdrop-blur-md bg-white/80 dark:bg-slate-900/50 ${isFullScreen ? 'shadow-2xl' : ''}`}
-                                >
-                                  {!isFullScreen && (
-                                    <div className="absolute top-3 left-3 z-10 hidden lg:block" aria-hidden>
-                                      <button
-                                        type="button"
-                                        onClick={toggleProjectTree}
-                                        className={`p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg hover:bg-gray-100 dark:hover:bg-slate-800/80 transition-all active:scale-95 ${isProjectTreeOpen ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-slate-400'}`}
-                                        aria-label={isProjectTreeOpen ? 'Hide files' : 'Show files'}
-                                        title={isProjectTreeOpen ? 'Hide files' : 'Show files'}
-                                      >
-                                        {isProjectTreeOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
-                                      </button>
-                                    </div>
-                                  )}
-                                  {!isFullScreen && (
-                                    <div className="absolute top-3 right-3 z-10 hidden lg:block" aria-hidden>
-                  
-                            <button
-                              type="button"
-                              onClick={toggleMetricsPanel}
-                              className={`p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg hover:bg-gray-100 dark:hover:bg-slate-800/80 transition-all active:scale-95 ${isMetricsPanelOpen ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-slate-400'}`}
-                              aria-label={isMetricsPanelOpen ? 'Hide metrics' : 'Show metrics'}
-                              title={isMetricsPanelOpen ? 'Hide metrics' : 'Show metrics'}
-                            >
-                              {isMetricsPanelOpen ? <PanelRightClose className="w-5 h-5" /> : <PanelRightOpen className="w-5 h-5" />}
-                            </button>
-                          </div>
-                        )}
-                        {!isFullScreen && (
-                          <div className="absolute top-3 left-3 z-10 lg:hidden" aria-hidden>
-                            <button
-                              type="button"
-                              onClick={() => setDrawerOpen(true)}
-                              className="p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg hover:bg-gray-100 dark:hover:bg-slate-800/80 transition-colors"
-                              aria-label="Open file tree"
-                              title="File tree"
-                            >
-                              <PanelLeft className="w-5 h-5 text-gray-600 dark:text-slate-400" aria-hidden />
-                            </button>
-                          </div>
-                        )}
-                                                        <GraphVisualization
-                                                          analysis={analysis}
-                                                          onOpenSettings={() => setSettingsOpen(true)}
-                                                        />
-                                        
-                                                        {/* Floating Toolbar - Trapped inside the graph area */}
-                                                        {!isCompact && (
-                                                          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 w-full max-w-[calc(100%-32px)] flex justify-center pointer-events-none">
-                                                            <GraphFloatingControls className="pointer-events-auto" />
-                                                          </div>
-                                                        )}
-                                                      </div>
-                                                    </section>
-                                                                        
-                    {!isFullScreen && isMetricsPanelOpen && (
-                      <aside className="hidden lg:block lg:w-80 shrink-0 space-y-5 overflow-y-auto transition-all duration-300 ease-in-out" aria-label="Metrics and insights">
-                        <MetricsPanel />
-                      </aside>
-                    )}
-        
-                        
+        ) : (
+          <div
+            className={`transition-all duration-300 ease-in-out min-h-0 ${isFullScreen ? 'fixed inset-0 z-40 bg-gray-50 dark:bg-slate-950 p-4' : 'flex flex-col lg:flex-row gap-5 max-md:h-[calc(100svh-120px)] lg:h-[calc(100vh-120px)] lg:overflow-hidden'}`}
+          >
+            {!isFullScreen && isProjectTreeOpen && (
+              <aside className="hidden lg:flex lg:w-72 shrink-0 flex-col min-h-0 overflow-y-auto transition-all duration-300 ease-in-out" aria-label="Analysis controls">
+                <ProjectFolderTree />
+              </aside>
+            )}
 
-                                                
+            <section
+              className={`transition-all duration-300 flex flex-col gap-2 min-h-0 flex-1 min-w-0 ${isFullScreen ? 'h-full w-full' : 'lg:h-full'}`}
+              aria-label="Main view"
+            >
+              <div
+                className={`flex-1 min-h-0 rounded-xl max-md:rounded-none border border-gray-200 dark:border-white/5 overflow-hidden relative z-0 backdrop-blur-md bg-white/80 dark:bg-slate-900/50 ${isFullScreen ? 'shadow-2xl' : ''}`}
+              >
+                {!isFullScreen && (
+                  <div className="absolute top-3 left-3 z-10 hidden lg:block" aria-hidden>
+                    <button
+                      type="button"
+                      onClick={toggleProjectTree}
+                      className={`p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg hover:bg-gray-100 dark:hover:bg-slate-800/80 transition-all active:scale-95 ${isProjectTreeOpen ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-slate-400'}`}
+                      aria-label={isProjectTreeOpen ? 'Hide files' : 'Show files'}
+                      title={isProjectTreeOpen ? 'Hide files' : 'Show files'}
+                    >
+                      {isProjectTreeOpen ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
+                    </button>
+                  </div>
+                )}
+                {!isFullScreen && (
+                  <div className="absolute top-3 right-3 z-10 hidden lg:block" aria-hidden>
 
-                        
+                    <button
+                      type="button"
+                      onClick={toggleMetricsPanel}
+                      className={`p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg hover:bg-gray-100 dark:hover:bg-slate-800/80 transition-all active:scale-95 ${isMetricsPanelOpen ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-slate-400'}`}
+                      aria-label={isMetricsPanelOpen ? 'Hide metrics' : 'Show metrics'}
+                      title={isMetricsPanelOpen ? 'Hide metrics' : 'Show metrics'}
+                    >
+                      {isMetricsPanelOpen ? <PanelRightClose className="w-5 h-5" /> : <PanelRightOpen className="w-5 h-5" />}
+                    </button>
+                  </div>
+                )}
+                {!isFullScreen && (
+                  <div className="absolute top-3 left-3 z-10 lg:hidden" aria-hidden>
+                    <button
+                      type="button"
+                      onClick={() => setDrawerOpen(true)}
+                      className="p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg hover:bg-gray-100 dark:hover:bg-slate-800/80 transition-colors"
+                      aria-label="Open file tree"
+                      title="File tree"
+                    >
+                      <PanelLeft className="w-5 h-5 text-gray-600 dark:text-slate-400" aria-hidden />
+                    </button>
+                  </div>
+                )}
+                <GraphVisualization
+                  analysis={analysis}
+                  onOpenSettings={() => setSettingsOpen(true)}
+                />
 
-                                    
+                {/* Floating Toolbar - Trapped inside the graph area */}
+                {!isCompact && (
+                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 w-full max-w-[calc(100%-32px)] flex justify-center pointer-events-none">
+                    <GraphFloatingControls className="pointer-events-auto" />
+                  </div>
+                )}
+              </div>
+            </section>
 
-                        
+            {!isFullScreen && isMetricsPanelOpen && (
+              <aside className="hidden lg:block lg:w-80 shrink-0 space-y-5 overflow-y-auto transition-all duration-300 ease-in-out" aria-label="Metrics and insights">
+                <MetricsPanel />
+              </aside>
+            )}
 
-            
+
+
+
+
+
+
+
+
+
+
+
 
 
             {!isFullScreen && isCompact && (
@@ -346,69 +435,69 @@ function App() {
 
       {/* Global Modals */}
       {analysis && showPreview && selectedNode && selectedNode.node_type !== 'external' && (
-        <FilePreviewModal 
-          analysisId={analysis.id} 
-          filePath={selectedNode.file_path} 
-          projectPath={analysis.project_path} 
-          onClose={() => setShowPreview(false)} 
+        <FilePreviewModal
+          analysisId={analysis.id}
+          filePath={selectedNode.file_path}
+          projectPath={analysis.project_path}
+          onClose={() => setShowPreview(false)}
         />
       )}
       {analysis && showExternalPackagesModal && (
-        <ExternalPackagesModal 
-          analysis={analysis} 
-          onClose={() => setShowExternalPackagesModal(false)} 
-          onSelectNode={(nodeId) => { 
-            const node = analysis.nodes.find(n => n.id === nodeId); 
-            if (node) setSelectedNode(node); 
+        <ExternalPackagesModal
+          analysis={analysis}
+          onClose={() => setShowExternalPackagesModal(false)}
+          onSelectNode={(nodeId) => {
+            const node = analysis.nodes.find(n => n.id === nodeId);
+            if (node) setSelectedNode(node);
             setShowExternalPackagesModal(false);
-          }} 
+          }}
         />
       )}
 
       {analysis && showImportRelations && selectedNode && (
-        <ImportRelationsModal 
-          analysis={analysis} 
-          selectedNode={selectedNode} 
-          onClose={() => setShowImportRelations(false)} 
-          onSelectNode={(node) => { 
-            setSelectedNode(node); 
-            setShowImportRelations(false); 
-          }} 
+        <ImportRelationsModal
+          analysis={analysis}
+          selectedNode={selectedNode}
+          onClose={() => setShowImportRelations(false)}
+          onSelectNode={(node) => {
+            setSelectedNode(node);
+            setShowImportRelations(false);
+          }}
         />
       )}
       {analysis && showOutgoingModal && selectedNode && (
-        <ImportListModal 
-          variant="outgoing" 
-          analysis={analysis} 
-          selectedNode={selectedNode} 
-          onClose={() => setShowOutgoingModal(false)} 
-          onSelectNode={(node) => { 
-            setSelectedNode(node); 
-            setShowOutgoingModal(false); 
-          }} 
+        <ImportListModal
+          variant="outgoing"
+          analysis={analysis}
+          selectedNode={selectedNode}
+          onClose={() => setShowOutgoingModal(false)}
+          onSelectNode={(node) => {
+            setSelectedNode(node);
+            setShowOutgoingModal(false);
+          }}
         />
       )}
       {analysis && showIncomingModal && selectedNode && (
-        <ImportListModal 
-          variant="incoming" 
-          analysis={analysis} 
-          selectedNode={selectedNode} 
-          onClose={() => setShowIncomingModal(false)} 
-          onSelectNode={(node) => { 
-            setSelectedNode(node); 
-            setShowIncomingModal(false); 
-          }} 
+        <ImportListModal
+          variant="incoming"
+          analysis={analysis}
+          selectedNode={selectedNode}
+          onClose={() => setShowIncomingModal(false)}
+          onSelectNode={(node) => {
+            setSelectedNode(node);
+            setShowIncomingModal(false);
+          }}
         />
       )}
       {analysis && showEntryPoints && (
-        <EntryPointsModal 
-          analysis={analysis} 
-          selectedFolderPath={selectedFolderPath} 
-          onClose={() => setShowEntryPoints(false)} 
-          onSelectNode={(node) => { 
-            setSelectedNode(node); 
-            setShowEntryPoints(false); 
-          }} 
+        <EntryPointsModal
+          analysis={analysis}
+          selectedFolderPath={selectedFolderPath}
+          onClose={() => setShowEntryPoints(false)}
+          onSelectNode={(node) => {
+            setSelectedNode(node);
+            setShowEntryPoints(false);
+          }}
         />
       )}
 

@@ -484,6 +484,7 @@ dependencies = [
     { name = "aiocache" },
     { name = "celery", extra = ["redis"] },
     { name = "fastapi" },
+    { name = "gunicorn" },
     { name = "networkx" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-jaeger" },
@@ -521,6 +522,7 @@ requires-dist = [
     { name = "aiocache", specifier = ">=0.12.2" },
     { name = "celery", extras = ["redis"], specifier = ">=5.3.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "gunicorn", specifier = ">=22.0.0" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27.0" },
     { name = "memray", marker = "extra == 'dev'", specifier = ">=1.11.0" },
     { name = "networkx", specifier = ">=3.4.0" },
@@ -659,6 +661,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/4a/45/122df922d05655f63930cf42c9e3f72ba20aadb26c100ee105cad4ce4257/grpcio-1.76.0-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:1c9b93f79f48b03ada57ea24725d83a30284a012ec27eab2cf7e50a550cbbbcc", size = 7592214, upload-time = "2025-10-21T16:22:33.831Z" },
     { url = "https://files.pythonhosted.org/packages/4a/6e/0b899b7f6b66e5af39e377055fb4a6675c9ee28431df5708139df2e93233/grpcio-1.76.0-cp314-cp314-win32.whl", hash = "sha256:747fa73efa9b8b1488a95d0ba1039c8e2dca0f741612d80415b1e1c560febf4e", size = 4062961, upload-time = "2025-10-21T16:22:36.468Z" },
     { url = "https://files.pythonhosted.org/packages/19/41/0b430b01a2eb38ee887f88c1f07644a1df8e289353b78e82b37ef988fb64/grpcio-1.76.0-cp314-cp314-win_amd64.whl", hash = "sha256:922fa70ba549fce362d2e2871ab542082d66e2aaf0c19480ea453905b01f384e", size = 4834462, upload-time = "2025-10-21T16:22:39.772Z" },
+]
+
+[[package]]
+name = "gunicorn"
+version = "25.0.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f3/e5/e1d2225d2b75fe4988821715d2c526fdf7b39f4a7260aa7e2bb4b25ec65c/gunicorn-25.0.3.tar.gz", hash = "sha256:b53a7fff1a07b825b962af320554de44ae77a26abfa373711ff3f83d57d3506d", size = 9702357, upload-time = "2026-02-07T16:53:52.72Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5e/84/117f39896ded517149be72d16c02252885690e9b0d1b84281944928f61aa/gunicorn-25.0.3-py3-none-any.whl", hash = "sha256:aca364c096c81ca11acd4cede0aaeea91ba76ca74e2c0d7f879154db9d890f35", size = 171728, upload-time = "2026-02-07T16:53:49.546Z" },
 ]
 
 [[package]]
