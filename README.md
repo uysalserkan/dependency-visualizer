@@ -1,6 +1,6 @@
 # Dependency Visualizer
 
-A modern web application for visualizing import dependencies in **Python, JavaScript, TypeScript, Go, and Java** projects. Understand your project structure through interactive, beautiful graphs.
+A modern web application for visualizing import dependencies in **Python, JavaScript, TypeScript, Go, Java, Ruby, Rust, and C++** projects. Understand your project structure through interactive, beautiful graphs.
 
 ![Main Screenshot](imgs/main.png)
 
@@ -10,6 +10,9 @@ A modern web application for visualizing import dependencies in **Python, JavaSc
 - **TypeScript** (`.ts`, `.tsx`) - All JS features + type imports, path aliases (`@/`, `~/`)
 - **Go** (`.go`) - Module-based imports, stdlib detection, internal packages
 - **Java** (`.java`) - Maven/Gradle/Plain Java projects, package-based resolution, static imports
+- **Ruby** (`.rb`) - require/require_relative, gem detection
+- **Rust** (`.rs`) - use/mod statements, crate detection
+- **C++** (`.cpp`, `.hpp`, `.cc`, `.h`) - #include directives, system/local headers
 
 ![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)
@@ -469,7 +472,6 @@ Create tests in `backend/tests/test_ruby_resolver.py` and verify resolution work
 
 ### Future Enhancements
 - [ ] Full AST parsing for JavaScript (acorn/babel)
-- [ ] More languages (Java, Go, Rust, Ruby)
 - [ ] Plugin marketplace
 - [ ] Visual comparison diff
 - [ ] Advanced impact analysis
