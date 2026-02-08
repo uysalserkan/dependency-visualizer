@@ -19,10 +19,13 @@ function getDimensions(el: HTMLElement): { width: number; height: number } {
   return { width, height }
 }
 
-function waitForLayout(): Promise<void> {
+function waitForLayout(ms = 100): Promise<void> {
   return new Promise((resolve) => {
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => resolve())
+      requestAnimationFrame(() => {
+        // Extra delay to ensure fitView animation completes
+        setTimeout(resolve, ms)
+      })
     })
   })
 }
@@ -41,7 +44,7 @@ const baseOptions = (
   filter,
   // Fix for React Flow / SVG heavy apps
   skipAutoScale: true,
-  fontEmbedCSS: '', 
+  fontEmbedCSS: '',
   includeQueryParams: true,
   copyStyles: true,
   style: {
@@ -62,7 +65,7 @@ export function useExportGraphPng() {
   const filter = useCallback((node: HTMLElement) => {
     // Skip controls, panels, and elements explicitly marked to be skipped
     if (node instanceof Element && (
-      node.closest?.('[data-skip-export]') || 
+      node.closest?.('[data-skip-export]') ||
       node.classList.contains('react-flow__panel') ||
       node.classList.contains('react-flow__controls') ||
       node.classList.contains('react-flow__attribution') ||
@@ -79,6 +82,16 @@ export function useExportGraphPng() {
     async (format: ExportImageFormat) => {
       if (!flowWrapperRef || !analysis) return
       try {
+        // Center the graph before export using fitView
+        // Get fresh instance from store in case it changed
+        const instance = useGraphStore.getState().reactFlowInstance
+        if (instance) {
+          console.log('Centering graph with fitView...')
+          instance.fitView({ padding: 0.1, duration: 0 })
+          // Wait longer for the viewport transformation to complete
+          await waitForLayout(300)
+        }
+
         let { width, height } = getDimensions(flowWrapperRef)
         if (width <= 0 || height <= 0) {
           await waitForLayout()
@@ -130,3 +143,4 @@ export function useExportGraphPng() {
 
   return { exportPng, exportImage, canExport: Boolean(flowWrapperRef && analysis) }
 }
+

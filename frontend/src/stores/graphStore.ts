@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { ReactFlowInstance } from '@xyflow/react'
 import type { AnalysisResult, Node } from '@/types/api'
 
 export type NodeSizeMode = 'degree' | 'fixed'
@@ -45,13 +46,15 @@ interface GraphState {
   graphBackground: 'dots' | 'grid'
   /** React Flow wrapper element for client-side PNG export; set by GraphVisualization, cleared on unmount. */
   flowWrapperRef: HTMLElement | null
+  /** React Flow instance for programmatic control (fitView, etc.) */
+  reactFlowInstance: ReactFlowInstance | null
   /** Heatmap: color nodes by refactor hotspot metric (off = default node colors). */
   heatmapMode: HeatmapMode
   /** Whether the right metrics panel is visible. */
   isMetricsPanelOpen: boolean
   /** Whether the left project tree sidebar is visible. */
   isProjectTreeOpen: boolean
-  
+
   // Modal states
   showPreview: boolean
   showExternalPackagesModal: boolean
@@ -65,6 +68,7 @@ interface GraphState {
 
   setAnalysis: (analysis: AnalysisResult | null) => void
   setFlowWrapperRef: (el: HTMLElement | null) => void
+  setReactFlowInstance: (instance: ReactFlowInstance | null) => void
   setSelectedNode: (node: Node | null) => void
   setSelectedFolderPath: (path: string | null) => void
   setSearchQuery: (query: string) => void
@@ -122,10 +126,11 @@ export const useGraphStore = create<GraphState>((set) => ({
   fitRequest: 0,
   graphBackground: 'dots',
   flowWrapperRef: null,
+  reactFlowInstance: null,
   heatmapMode: 'off',
   isMetricsPanelOpen: true,
   isProjectTreeOpen: true,
-  
+
   showPreview: false,
   showExternalPackagesModal: false,
   showImportRelations: false,
@@ -137,6 +142,7 @@ export const useGraphStore = create<GraphState>((set) => ({
 
   setAnalysis: (analysis) => set({ analysis, selectedNode: null, selectedFolderPath: null }),
   setFlowWrapperRef: (el) => set({ flowWrapperRef: el }),
+  setReactFlowInstance: (instance) => set({ reactFlowInstance: instance }),
   setSelectedNode: (node) => set({ selectedNode: node }),
   setSelectedFolderPath: (path) => set({ selectedFolderPath: path }),
   setSearchQuery: (query) => set({ searchQuery: query }),

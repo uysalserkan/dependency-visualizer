@@ -579,72 +579,73 @@ function GraphFlow({
   return (
     <>
       <EdgeBundlingContext.Provider value={{ bundledPaths }}>
-      <ViewportLODContext.Provider value={{ zoom: viewportZoom }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeClick={onNodeClick}
-        onEdgeClick={onEdgeClick}
-        onPaneClick={onPaneClick}
-        onMove={(_ev, viewport) => setViewportZoom(viewport.zoom)}
-        onNodeMouseEnter={onNodeMouseEnter}
-        onNodeMouseLeave={onNodeMouseLeave}
-        onEdgeMouseEnter={onEdgeMouseEnter}
-        onEdgeMouseLeave={onEdgeMouseLeave}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        fitView
-        fitViewOptions={{
-          padding: 0.2,
-          duration: layoutAnimation ? 300 : 0,
-        }}
-        minZoom={0.1}
-        maxZoom={3}
-        zoomOnScroll
-        zoomOnPinch
-        panOnDrag
-        nodesDraggable={true}
-        nodesConnectable={false}
-        elementsSelectable={true}
-        proOptions={{ hideAttribution: true }}
-        className="rounded-xl"
-      >
-        <Background />
-                        <Panel position="top-right" className="flex flex-col gap-2">
-                          {onOpenSettings && !isCompact && (
-                            <button
-                              type="button"
-                              onClick={onOpenSettings}
-                              className="p-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-md hover:bg-gray-100 dark:hover:bg-slate-800/80 transition-colors"
-                              aria-label="Open settings"
-                              title="Settings"
-                            >
-                              <Settings className="w-4 h-4 text-gray-600 dark:text-slate-400" aria-hidden />
-                            </button>
-                          )}
-                          {isCompact && (
-                            <button
-                              type="button"
-                              onClick={() => setIsToolboxOpen(true)}
-                              className="p-2 rounded-lg border border-transparent bg-indigo-500 text-white shadow-md hover:bg-indigo-600 transition-all active:scale-95"
-                              aria-label="Open graph controls"
-                              title="Graph Controls"
-                            >
-                              <SlidersHorizontal className="w-4 h-4" />
-                            </button>
-                          )}
-                        </Panel>
-                
-                        {isCompact && (
-                          <SideDrawer open={isToolboxOpen} onClose={() => setIsToolboxOpen(false)} title="Graph Controls">
-                            <GraphFloatingControls showLabels />
-                          </SideDrawer>
-                        )}
-                      </ReactFlow>
-                
-      </ViewportLODContext.Provider>
+        <ViewportLODContext.Provider value={{ zoom: viewportZoom }}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeClick={onNodeClick}
+            onEdgeClick={onEdgeClick}
+            onPaneClick={onPaneClick}
+            onInit={(instance) => useGraphStore.getState().setReactFlowInstance(instance)}
+            onMove={(_ev, viewport) => setViewportZoom(viewport.zoom)}
+            onNodeMouseEnter={onNodeMouseEnter}
+            onNodeMouseLeave={onNodeMouseLeave}
+            onEdgeMouseEnter={onEdgeMouseEnter}
+            onEdgeMouseLeave={onEdgeMouseLeave}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            fitView
+            fitViewOptions={{
+              padding: 0.2,
+              duration: layoutAnimation ? 300 : 0,
+            }}
+            minZoom={0.1}
+            maxZoom={3}
+            zoomOnScroll
+            zoomOnPinch
+            panOnDrag
+            nodesDraggable={true}
+            nodesConnectable={false}
+            elementsSelectable={true}
+            proOptions={{ hideAttribution: true }}
+            className="rounded-xl"
+          >
+            <Background />
+            <Panel position="top-right" className="flex flex-col gap-2">
+              {onOpenSettings && !isCompact && (
+                <button
+                  type="button"
+                  onClick={onOpenSettings}
+                  className="p-2 rounded-lg border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-md hover:bg-gray-100 dark:hover:bg-slate-800/80 transition-colors"
+                  aria-label="Open settings"
+                  title="Settings"
+                >
+                  <Settings className="w-4 h-4 text-gray-600 dark:text-slate-400" aria-hidden />
+                </button>
+              )}
+              {isCompact && (
+                <button
+                  type="button"
+                  onClick={() => setIsToolboxOpen(true)}
+                  className="p-2 rounded-lg border border-transparent bg-indigo-500 text-white shadow-md hover:bg-indigo-600 transition-all active:scale-95"
+                  aria-label="Open graph controls"
+                  title="Graph Controls"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                </button>
+              )}
+            </Panel>
+
+            {isCompact && (
+              <SideDrawer open={isToolboxOpen} onClose={() => setIsToolboxOpen(false)} title="Graph Controls">
+                <GraphFloatingControls showLabels />
+              </SideDrawer>
+            )}
+          </ReactFlow>
+
+        </ViewportLODContext.Provider>
       </EdgeBundlingContext.Provider>
       {showTooltip && hoveredBlameNode && (
         <div

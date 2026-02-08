@@ -118,6 +118,10 @@ def clone_repository(
     """
     validate_repository_url(url)
 
+    # Default to 'main' if no branch specified (most repos use main as default now)
+    if not branch:
+        branch = "main"
+
     depth = depth if depth is not None else settings.REPOSITORY_CLONE_DEPTH
     timeout = timeout or settings.REPOSITORY_CLONE_TIMEOUT
     parent = Path(work_dir) if work_dir else Path(tempfile.gettempdir())
