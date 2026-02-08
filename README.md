@@ -1,6 +1,8 @@
-# Import Visualizer
+# Dependency Visualizer
 
 A modern web application for visualizing import dependencies in **Python, JavaScript, TypeScript, Go, and Java** projects. Understand your project structure through interactive, beautiful graphs.
+
+![Main Screenshot](imgs/main.png)
 
 **Supported Languages:**
 - **Python** (`.py`) - Full AST parsing with relative/absolute import resolution
@@ -59,7 +61,7 @@ A modern web application for visualizing import dependencies in **Python, JavaSc
 
 ```bash
 # Clone or navigate to the project
-cd import_visualizer
+cd dependency_visualizer
 
 # Start all services
 docker-compose up
@@ -91,7 +93,7 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ```bash
 cd extractor && go build -o extractor . && cd ..
-# In backend .env: GO_EXTRACTOR_PATH=/path/to/import_visualizer/extractor/extractor
+# In backend .env: GO_EXTRACTOR_PATH=/path/to/dependency_visualizer/extractor/extractor
 ```
 
 See `extractor/README.md` for details.
@@ -120,7 +122,7 @@ pnpm dev
    Example: /Users/yourname/projects/my-python-app
    
    Try the sample project:
-   /Users/serkan.uysal/Documents/import_visualizer/sample_project
+   /Users/serkan.uysal/Documents/dependency_visualizer/sample_project
    ```
 
 3. **Analyze** - Click "Analyze Project" to generate the dependency graph
@@ -296,7 +298,7 @@ pnpm test:ci
 ## Project Structure
 
 ```
-import_visualizer/
+dependency_visualizer/
 ├── backend/                 # FastAPI backend
 │   ├── app/
 │   │   ├── api/            # REST endpoints
