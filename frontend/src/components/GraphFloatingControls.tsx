@@ -48,12 +48,12 @@ export function GraphFloatingControls({ className = '', showLabels = false }: Gr
   }
 
   // Desktop: Modern Glassmorphism Island with Horizontal Scroll support
-  const containerClasses = showLabels 
+  const containerClasses = showLabels
     ? `flex flex-col gap-5 ${className}`
-    : `flex flex-row items-center gap-2 sm:gap-3 px-3 h-14 rounded-full border border-white/10 bg-slate-900/70 backdrop-blur-md shadow-2xl shadow-black/20 transition-all duration-300 w-auto max-w-full z-20 overflow-x-auto no-scrollbar select-none ${className}`;
+    : `flex flex-row items-center gap-2 sm:gap-3 px-3 h-14 rounded-full border border-gray-200 dark:border-white/10 bg-white/80 dark:bg-slate-900/70 backdrop-blur-md shadow-2xl transition-all duration-300 w-auto max-w-full z-20 overflow-x-auto no-scrollbar select-none ${className}`;
 
   // Individual control container style
-  const desktopControlClasses = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all focus-within:ring-2 focus-within:ring-indigo-500/40 shrink-0 min-w-0";
+  const desktopControlClasses = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100/80 dark:bg-white/5 border border-gray-200 dark:border-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 hover:border-gray-300 dark:hover:border-white/10 transition-all focus-within:ring-2 focus-within:ring-indigo-500/40 shrink-0 min-w-0";
   const mobileItemClasses = "flex flex-col gap-2 w-full";
 
   const inputContainerClasses = showLabels
@@ -69,7 +69,7 @@ export function GraphFloatingControls({ className = '', showLabels = false }: Gr
       style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
     >
       {/* Search Module - Interactive Expansion */}
-      <div 
+      <div
         className={showLabels ? mobileItemClasses : `shrink-0 transition-all duration-300 ease-in-out cursor-pointer ${isSearchExpanded ? 'w-48 sm:w-64 lg:w-80' : 'w-10'}`}
         onClick={handleSearchClick}
       >
@@ -79,7 +79,7 @@ export function GraphFloatingControls({ className = '', showLabels = false }: Gr
           </label>
         )}
         <div className={`${inputContainerClasses} ${!showLabels && !isSearchExpanded ? 'justify-center px-0' : ''}`}>
-          <Search className={`w-3.5 h-3.5 transition-colors ${isSearchExpanded ? 'text-white/40' : 'text-white/70'} shrink-0`} aria-hidden />
+          <Search className={`w-3.5 h-3.5 transition-colors ${isSearchExpanded ? 'text-gray-400 dark:text-white/40' : 'text-gray-600 dark:text-white/70'} shrink-0`} aria-hidden />
           <input
             ref={inputRef}
             type="search"
@@ -89,11 +89,11 @@ export function GraphFloatingControls({ className = '', showLabels = false }: Gr
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={showLabels || isSearchExpanded ? "Search modules…" : ""}
             aria-label="Search modules"
-            className={`w-full bg-transparent border-0 text-xs placeholder:text-white/30 focus:outline-none focus:ring-0 font-mono-ui transition-opacity duration-300 ${isSearchExpanded || showLabels ? 'opacity-100 w-full ml-1' : 'opacity-0 w-0 p-0 overflow-hidden'} ${showLabels ? 'text-gray-900 dark:text-white' : 'text-white'}`}
+            className={`w-full bg-transparent border-0 text-xs placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:ring-0 font-mono-ui transition-opacity duration-300 ${isSearchExpanded || showLabels ? 'opacity-100 w-full ml-1' : 'opacity-0 w-0 p-0 overflow-hidden'} ${showLabels ? 'text-gray-900 dark:text-white' : 'text-gray-900 dark:text-white'}`}
           />
         </div>
       </div>
-      
+
       {!showLabels && <div className="w-px h-4 bg-white/10 shrink-0 mx-0.5" aria-hidden />}
 
       {/* Layout Selection */}
@@ -104,22 +104,22 @@ export function GraphFloatingControls({ className = '', showLabels = false }: Gr
           </label>
         )}
         <div className={`${showLabels ? inputContainerClasses : desktopControlClasses} relative group`}>
-          <Layout className={`w-3.5 h-3.5 shrink-0 ${showLabels ? 'text-gray-400' : 'text-white/40'}`} aria-hidden />
+          <Layout className={`w-3.5 h-3.5 shrink-0 ${showLabels ? 'text-gray-400' : 'text-gray-600 dark:text-white/40'}`} aria-hidden />
           <div className={showLabels ? "w-full" : "flex items-center gap-1"}>
             <select
               value={layoutName}
               onChange={(e) => setLayoutName(e.target.value)}
               aria-label="Graph layout"
-              className={`bg-transparent border-0 text-xs focus:outline-none focus:ring-0 cursor-pointer font-mono-ui appearance-none z-10 ${showLabels ? 'w-full text-gray-700 dark:text-gray-200' : 'w-full sm:w-auto pr-4 text-white/80'} ${!showLabels ? 'hidden sm:block' : ''}`}
+              className={`bg-transparent border-0 text-xs focus:outline-none focus:ring-0 cursor-pointer font-mono-ui appearance-none z-10 ${showLabels ? 'w-full text-gray-700 dark:text-gray-200' : 'w-full sm:w-auto pr-4 text-gray-700 dark:text-white/80'} ${!showLabels ? 'hidden sm:block' : ''}`}
             >
               {layouts.map((layout) => (
-                <option key={layout.id} value={layout.id} className="bg-slate-900 text-white font-mono-ui">
+                <option key={layout.id} value={layout.id} className="bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono-ui">
                   {layout.name}
                 </option>
               ))}
             </select>
             {!showLabels && (
-              <ChevronDown className="absolute right-2 sm:right-2.5 w-3 h-3 text-white/30 pointer-events-none group-hover:text-white/50 transition-colors" />
+              <ChevronDown className="absolute right-2 sm:right-2.5 w-3 h-3 text-gray-400 dark:text-white/30 pointer-events-none group-hover:text-gray-600 dark:group-hover:text-white/50 transition-colors" />
             )}
           </div>
         </div>
@@ -133,22 +133,22 @@ export function GraphFloatingControls({ className = '', showLabels = false }: Gr
           </label>
         )}
         <div className={`${showLabels ? inputContainerClasses : desktopControlClasses} relative group`}>
-          <Flame className={`w-3.5 h-3.5 shrink-0 transition-colors ${isHeatmapActive ? 'text-orange-400' : showLabels ? 'text-gray-400' : 'text-white/40'}`} aria-hidden />
+          <Flame className={`w-3.5 h-3.5 shrink-0 transition-colors ${isHeatmapActive ? 'text-orange-400' : showLabels ? 'text-gray-400' : 'text-gray-600 dark:text-white/40'}`} aria-hidden />
           <div className={showLabels ? "w-full" : "flex items-center gap-1"}>
             <select
               value={heatmapMode}
               onChange={(e) => setHeatmapMode(e.target.value as HeatmapMode)}
               aria-label="Refactor hotspots"
-              className={`bg-transparent border-0 text-xs focus:outline-none focus:ring-0 cursor-pointer font-mono-ui appearance-none z-10 ${showLabels ? 'w-full text-gray-700 dark:text-gray-200' : 'w-full sm:w-auto pr-4 text-white/80'} ${!showLabels ? 'hidden sm:block' : ''}`}
+              className={`bg-transparent border-0 text-xs focus:outline-none focus:ring-0 cursor-pointer font-mono-ui appearance-none z-10 ${showLabels ? 'w-full text-gray-700 dark:text-gray-200' : 'w-full sm:w-auto pr-4 text-gray-700 dark:text-white/80'} ${!showLabels ? 'hidden sm:block' : ''}`}
             >
               {heatmapModeOptions.map((o) => (
-                <option key={o.id} value={o.id} className="bg-slate-900 text-white font-mono-ui">
+                <option key={o.id} value={o.id} className="bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono-ui">
                   {o.name}
                 </option>
               ))}
             </select>
             {!showLabels && (
-              <ChevronDown className="absolute right-2 sm:right-2.5 w-3 h-3 text-white/30 pointer-events-none group-hover:text-white/50 transition-colors" />
+              <ChevronDown className="absolute right-2 sm:right-2.5 w-3 h-3 text-gray-400 dark:text-white/30 pointer-events-none group-hover:text-gray-600 dark:group-hover:text-white/50 transition-colors" />
             )}
           </div>
         </div>
@@ -160,7 +160,7 @@ export function GraphFloatingControls({ className = '', showLabels = false }: Gr
         <button
           type="button"
           onClick={requestFit}
-          className={`${showLabels ? 'flex-1 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5' : 'p-2 sm:p-2.5 bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10'} flex items-center justify-center gap-2 rounded-full text-white/70 hover:text-white transition-all active:scale-95 shrink-0`}
+          className={`${showLabels ? 'flex-1 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5' : 'p-2 sm:p-2.5 bg-gray-100/80 dark:bg-white/5 border border-gray-200 dark:border-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 hover:border-gray-300 dark:hover:border-white/10'} flex items-center justify-center gap-2 rounded-full text-gray-600 dark:text-white/70 hover:text-gray-900 dark:hover:text-white transition-all active:scale-95 shrink-0`}
           aria-label="Fit graph to view"
           title="Fit to view"
         >
@@ -170,7 +170,7 @@ export function GraphFloatingControls({ className = '', showLabels = false }: Gr
         <button
           type="button"
           onClick={toggleFullScreen}
-          className={`${showLabels ? 'flex-1 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5' : 'p-2 sm:p-2.5 bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10'} flex items-center justify-center gap-2 rounded-lg text-gray-600 dark:text-slate-300 transition-all active:scale-95 shrink-0`}
+          className={`${showLabels ? 'flex-1 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5' : 'p-2 sm:p-2.5 bg-gray-100/80 dark:bg-white/5 border border-gray-200 dark:border-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 hover:border-gray-300 dark:hover:border-white/10'} flex items-center justify-center gap-2 rounded-lg text-gray-600 dark:text-slate-300 transition-all active:scale-95 shrink-0`}
           aria-label={isFullScreen ? 'Exit full screen' : 'Enter full screen'}
           title={isFullScreen ? 'Exit full screen (ESC)' : 'Enter full screen'}
         >

@@ -51,12 +51,12 @@ export function ImportGraph({ onSuccessCallback }: ImportGraphProps = {}) {
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 backdrop-blur-md bg-white/5 p-6 space-y-4">
+    <div className="rounded-2xl border border-gray-200 dark:border-white/10 backdrop-blur-md bg-gray-50 dark:bg-white/5 p-6 space-y-4">
       <label
         className={cn(
           'group flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-all duration-200',
-          'border-white/10 bg-black/30 text-white/70 hover:border-white/20 hover:bg-black/40',
-          isDragging && 'border-purple-400/60 bg-purple-500/10 text-white'
+          'border-gray-300 dark:border-white/10 bg-gray-100 dark:bg-black/30 text-gray-700 dark:text-white/70 hover:border-gray-400 dark:hover:border-white/20 hover:bg-gray-200 dark:hover:bg-black/40',
+          isDragging && 'border-purple-400/60 bg-purple-500/10 text-purple-700 dark:text-white'
         )}
         onDragEnter={() => setIsDragging(true)}
         onDragOver={(e) => {
@@ -66,14 +66,14 @@ export function ImportGraph({ onSuccessCallback }: ImportGraphProps = {}) {
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
       >
-        <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/5">
-          <FileUp className="h-5 w-5 text-white/70" aria-hidden />
+        <span className="flex h-12 w-12 items-center justify-center rounded-full border border-gray-300 dark:border-white/10 bg-gray-100 dark:bg-white/5">
+          <FileUp className="h-5 w-5 text-gray-600 dark:text-white/70" aria-hidden />
         </span>
         <div className="space-y-1">
-          <p className="text-sm font-semibold text-white">
+          <p className="text-sm font-semibold text-gray-900 dark:text-white">
             Drag &amp; drop graph file or click to browse
           </p>
-          <p className="text-xs text-white/40 font-mono">.json · .graphml · .gexf (max {MAX_SIZE_MB}MB)</p>
+          <p className="text-xs text-gray-600 dark:text-white/40 font-mono">.json · .graphml · .gexf (max {MAX_SIZE_MB}MB)</p>
         </div>
         <span className="sr-only">Choose graph file</span>
         <input
@@ -86,7 +86,7 @@ export function ImportGraph({ onSuccessCallback }: ImportGraphProps = {}) {
         />
       </label>
       {isPending && (
-        <div className="flex items-center gap-2 text-sm text-white/60 font-mono">
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-white/60 font-mono">
           <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
           <span>Importing…</span>
         </div>
