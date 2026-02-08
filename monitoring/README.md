@@ -1,6 +1,6 @@
 # Monitoring Setup Guide
 
-This directory contains configuration files for monitoring the Import Visualizer application.
+This directory contains configuration files for monitoring the Dependency Visualizer application.
 
 ## Components
 
@@ -36,7 +36,7 @@ docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
 ```bash
 docker run -d \
   --name prometheus \
-  --network import-visualizer_default \
+  --network dependency-visualizer_default \
   -p 9090:9090 \
   -v $(pwd)/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml \
   -v $(pwd)/monitoring/alerts:/etc/prometheus/alerts \
@@ -48,7 +48,7 @@ docker run -d \
 ```bash
 docker run -d \
   --name grafana \
-  --network import-visualizer_default \
+  --network dependency-visualizer_default \
   -p 3001:3000 \
   -e GF_SECURITY_ADMIN_PASSWORD=admin \
   grafana/grafana:latest

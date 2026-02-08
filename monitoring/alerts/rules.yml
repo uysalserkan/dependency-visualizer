@@ -1,7 +1,7 @@
-# Alert Rules for Import Visualizer
+# Alert Rules for Dependency Visualizer
 
 groups:
-  - name: import_visualizer_alerts
+  - name: dependency_visualizer_alerts
     interval: 30s
     rules:
       # High error rate
@@ -15,7 +15,7 @@ groups:
         for: 5m
         labels:
           severity: warning
-          service: import-visualizer
+          service: dependency-visualizer
         annotations:
           summary: "High error rate detected"
           description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
@@ -31,7 +31,7 @@ groups:
         for: 2m
         labels:
           severity: critical
-          service: import-visualizer
+          service: dependency-visualizer
         annotations:
           summary: "Critical error rate detected"
           description: "Error rate is {{ $value | humanizePercentage }} (threshold: 20%)"
@@ -45,7 +45,7 @@ groups:
         for: 10m
         labels:
           severity: warning
-          service: import-visualizer
+          service: dependency-visualizer
         annotations:
           summary: "Slow analysis response time"
           description: "P95 response time is {{ $value }}s (threshold: 30s)"
@@ -59,7 +59,7 @@ groups:
         for: 5m
         labels:
           severity: critical
-          service: import-visualizer
+          service: dependency-visualizer
         annotations:
           summary: "Very slow analysis response time"
           description: "P95 response time is {{ $value }}s (threshold: 60s)"
@@ -75,20 +75,20 @@ groups:
         for: 15m
         labels:
           severity: warning
-          service: import-visualizer
+          service: dependency-visualizer
         annotations:
           summary: "Low cache hit ratio"
           description: "Cache hit ratio is {{ $value | humanizePercentage }} (threshold: 50%)"
 
       # Service down
       - alert: ServiceDown
-        expr: up{job="import-visualizer-backend"} == 0
+        expr: up{job="dependency-visualizer-backend"} == 0
         for: 1m
         labels:
           severity: critical
-          service: import-visualizer
+          service: dependency-visualizer
         annotations:
-          summary: "Import Visualizer backend is down"
+          summary: "Dependency Visualizer backend is down"
           description: "The backend service has been down for more than 1 minute"
 
       # High memory cache usage
@@ -97,7 +97,7 @@ groups:
         for: 10m
         labels:
           severity: warning
-          service: import-visualizer
+          service: dependency-visualizer
         annotations:
           summary: "Memory cache near capacity"
           description: "Memory cache has {{ $value }} items (capacity: 100)"
@@ -108,7 +108,7 @@ groups:
         for: 5m
         labels:
           severity: warning
-          service: import-visualizer
+          service: dependency-visualizer
         annotations:
           summary: "High number of concurrent analyses"
           description: "{{ $value }} analyses are currently running (threshold: 10)"

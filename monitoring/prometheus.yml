@@ -1,10 +1,10 @@
-# Prometheus Configuration for Import Visualizer
+# Prometheus Configuration for Dependency Visualizer
 
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    cluster: 'import-visualizer'
+    cluster: 'dependency-visualizer'
     environment: 'production'
 
 # Alertmanager configuration
@@ -21,12 +21,12 @@ rule_files:
 # Scrape configurations
 scrape_configs:
   # Backend API metrics
-  - job_name: 'import-visualizer-backend'
+  - job_name: 'dependency-visualizer-backend'
     static_configs:
       - targets: ['backend:8000']
         labels:
           service: 'backend'
-          app: 'import-visualizer'
+          app: 'dependency-visualizer'
     metrics_path: '/metrics'
     scrape_interval: 10s
     scrape_timeout: 5s
