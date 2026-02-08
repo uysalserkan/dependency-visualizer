@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings
 
 ExtractorBackend = Literal["auto", "python", "go"]
 MetricsLevel = Literal["light", "full"]
+JsParserMode = Literal["auto", "ast", "regex"]
 
 
 class Settings(BaseSettings):
@@ -30,6 +31,8 @@ class Settings(BaseSettings):
     EXTRACTOR_BACKEND: ExtractorBackend = "auto"
     # Go extractor (faster): path to extractor binary; required when EXTRACTOR_BACKEND=go
     GO_EXTRACTOR_PATH: str | None = None
+    # JavaScript parser mode: "auto" (try AST, fall back to regex), "ast", or "regex"
+    JS_PARSER_MODE: JsParserMode = "auto"
     
     # Cache
     CACHE_DB_PATH: str = ".cache/analysis.db"

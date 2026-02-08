@@ -4,6 +4,7 @@ import type {
   AnalyzeRepositoryRequest,
   FileBlameResponse,
   FilePreview,
+  ImpactReport,
   InsightsResponse,
 } from '@/types/api'
 
@@ -146,6 +147,24 @@ export const api = {
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
       throw new Error(error.detail || 'Failed to import graph')
+    }
+
+    return response.json()
+  },
+
+  async getImpact(analysisId: string, filePath: string, depth = -1): Promise<ImpactReport> {
+    const params = new URLSearchParams({
+      file_path: filePath,
+      depth: String(depth),
+    })
+    const response = await fetch(
+      `${API_BASE_URL}/analysis/${analysisId}/impact?${params}`,
+      { method: 'POST' }
+    )
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
+      throw new Error(error.detail || 'Failed to analyze impact')
     }
 
     return response.json()

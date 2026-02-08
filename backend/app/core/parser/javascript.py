@@ -7,6 +7,11 @@ from pathlib import Path
 from typing import List
 
 from app.api.models import ImportInfo
+from app.config import settings
+
+
+# Path to the acorn-based JS parser script
+JS_AST_PARSER_PATH = Path(__file__).parent.parent.parent.parent / "scripts" / "js_ast_parser.js"
 
 
 class JavaScriptParser:
@@ -14,10 +19,11 @@ class JavaScriptParser:
 
     def __init__(self):
         """Initialize JavaScript parser."""
-        self._acorn_available = self._check_acorn()
+        self._node_available = self._check_node()
+        self._ast_parser_available = self._node_available and JS_AST_PARSER_PATH.exists()
 
-    def _check_acorn(self) -> bool:
-        """Check if acorn is available for parsing."""
+    def _check_node(self) -> bool:
+        """Check if Node.js is available for AST parsing."""
         try:
             result = subprocess.run(
                 ["node", "--version"], capture_output=True, text=True, timeout=2
@@ -39,6 +45,62 @@ class JavaScriptParser:
         Returns:
             List of ImportInfo objects
         """
+        # Determine parser mode
+        mode = settings.JS_PARSER_MODE
+        
+        if mode == "ast" or (mode == "auto" and self._ast_parser_available):
+            result = self._parse_with_ast(file_path)
+            if result is not None:
+                return result
+            # Fall back to regex if AST parsing failed
+        
+        # Use regex-based parsing
+        return self._parse_with_regex(file_path)
+
+    def _parse_with_ast(self, file_path: Path) -> List[ImportInfo] | None:
+        """Parse file using acorn AST parser via Node.js subprocess.
+        
+        Returns None if AST parsing is not available or failed.
+        """
+        if not self._ast_parser_available:
+            return None
+            
+        try:
+            result = subprocess.run(
+                ["node", str(JS_AST_PARSER_PATH), str(file_path)],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                cwd=JS_AST_PARSER_PATH.parent,
+            )
+            
+            if result.returncode != 0:
+                return None
+                
+            data = json.loads(result.stdout)
+            
+            # Check for error response
+            if isinstance(data, dict) and data.get("error"):
+                return None
+            
+            # Convert to ImportInfo objects
+            imports = []
+            for item in data:
+                imports.append(
+                    ImportInfo(
+                        source_file=item["source_file"],
+                        imported_module=item["imported_module"],
+                        import_type=item["import_type"],
+                        line_number=item["line_number"],
+                    )
+                )
+            return imports
+            
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, KeyError):
+            return None
+
+    def _parse_with_regex(self, file_path: Path) -> List[ImportInfo]:
+        """Parse file using regex patterns (fallback method)."""
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()

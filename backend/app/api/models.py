@@ -305,6 +305,55 @@ class InsightsResponse(BaseModel):
         default_factory=dict, description="Import statistics (raw)"
     )
 
+class AffectedFile(BaseModel):
+    """A file affected by changing the target file."""
+
+    file_path: str = Field(..., description="Path to the affected file")
+    distance: int = Field(..., description="Number of hops from the target file")
+    impact_type: Literal["direct", "transitive"] = Field(
+        ..., description="Direct dependency or transitive"
+    )
+    pagerank: float = Field(default=0.0, description="PageRank score of this file")
+    imported_by_count: int = Field(default=0, description="How many files import this file")
+
+
+class ImpactRequest(BaseModel):
+    """Request model for impact analysis."""
+
+    file_path: str = Field(..., description="Relative or absolute path to the file to analyze")
+    depth: int = Field(
+        default=-1,
+        description="Max depth to traverse (-1 = unlimited)",
+    )
+
+
+class ImpactReport(BaseModel):
+    """Impact analysis report for a file change."""
+
+    target_file: str = Field(..., description="The file being analyzed")
+    affected_count: int = Field(..., description="Total number of affected files")
+    forward_impact: list[AffectedFile] = Field(
+        default_factory=list,
+        description="Files that depend on the target (will break if target changes)",
+    )
+    backward_impact: list[AffectedFile] = Field(
+        default_factory=list,
+        description="Files that the target depends on (root causes)",
+    )
+    impact_score: float = Field(
+        ...,
+        ge=0,
+        le=100,
+        description="Impact score 0-100 (based on affected count and importance)",
+    )
+    risk_level: Literal["low", "medium", "high", "critical"] = Field(
+        ..., description="Risk level based on impact score"
+    )
+    dependency_chains: list[list[str]] = Field(
+        default_factory=list,
+        description="Example dependency chains from entry points to this file",
+    )
+
 
 class ErrorResponse(BaseModel):
     """Error response model."""

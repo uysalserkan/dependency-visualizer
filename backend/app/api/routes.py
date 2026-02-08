@@ -795,6 +795,68 @@ async def detect_project_languages(
         raise
 
 
+@router.post("/analysis/{analysis_id}/impact")
+async def analyze_impact(
+    analysis_id: str,
+    file_path: str = Query(..., description="Path to file to analyze impact for"),
+    depth: int = Query(-1, description="Max depth to traverse (-1 = unlimited)"),
+    service: AnalysisService = Depends(get_analysis_service),
+):
+    """Analyze the impact of changing a specific file.
+
+    Returns forward impact (files that depend on this file) and backward impact
+    (files this file depends on), along with an impact score and risk level.
+
+    Args:
+        analysis_id: ID of the analysis
+        file_path: Path to the file to analyze
+        depth: Maximum traversal depth (-1 for unlimited)
+        service: Injected analysis service
+
+    Returns:
+        ImpactReport with affected files, impact score, and dependency chains
+    """
+    from app.api.models import ImpactReport
+    from app.core.graph.impact import ImpactAnalyzer
+
+    try:
+        analyzer, builder = service.get_analyzer_and_builder(analysis_id)
+        analysis = service.get_analysis(analysis_id)
+
+        # Get the graph and PageRank scores
+        graph = builder.get_graph()
+        pagerank_scores = analyzer.get_pagerank_scores()
+
+        # Normalize file path to match node IDs
+        # Try both the raw path and normalized versions
+        target_node = None
+        for node in analysis.nodes:
+            if (
+                node.id == file_path
+                or node.file_path == file_path
+                or node.id.endswith(file_path)
+                or file_path.endswith(node.id)
+            ):
+                target_node = node.id
+                break
+
+        if target_node is None:
+            # Try exact match on node ID
+            target_node = file_path
+
+        # Run impact analysis
+        impact_analyzer = ImpactAnalyzer(graph, pagerank_scores)
+        report = impact_analyzer.analyze_impact(target_node, depth)
+
+        return report
+
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.exception("Impact analysis failed", file_path=file_path)
+        raise HTTPException(status_code=500, detail="Failed to analyze impact")
+
+
 @router.get("/cache/stats")
 async def get_cache_stats(cache=Depends(get_cache_db)):
     """Get cache statistics.

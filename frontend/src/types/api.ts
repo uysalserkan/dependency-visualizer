@@ -158,3 +158,21 @@ export interface AnalyzeRepositoryRequest {
   branch?: string | null
   ignore_patterns?: string[]
 }
+
+export interface AffectedFile {
+  file_path: string
+  distance: number
+  impact_type: 'direct' | 'transitive'
+  pagerank: number
+  imported_by_count: number
+}
+
+export interface ImpactReport {
+  target_file: string
+  affected_count: number
+  forward_impact: AffectedFile[]
+  backward_impact: AffectedFile[]
+  impact_score: number
+  risk_level: 'low' | 'medium' | 'high' | 'critical'
+  dependency_chains: string[][]
+}
