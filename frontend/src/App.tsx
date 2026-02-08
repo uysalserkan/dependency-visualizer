@@ -299,7 +299,7 @@ function App() {
           </div>
         ) : (
           <div
-            className={`transition-all duration-300 ease-in-out min-h-0 ${isFullScreen ? 'fixed inset-0 z-40 bg-gray-50 dark:bg-slate-950 p-4' : 'flex flex-col lg:flex-row gap-5 max-md:h-[calc(100svh-120px)] lg:h-[calc(100vh-120px)] lg:overflow-hidden'}`}
+            className={`transition-all duration-300 ease-in-out min-h-0 ${isFullScreen ? 'fixed inset-0 z-40 bg-gray-50 dark:bg-slate-950 p-4' : 'flex flex-col lg:flex-row gap-5 max-md:h-[calc(100svh-120px)] md:h-[calc(100vh-120px)] lg:overflow-hidden'}`}
           >
             {!isFullScreen && isProjectTreeOpen && (
               <aside className="hidden lg:flex lg:w-72 shrink-0 flex-col min-h-0 overflow-y-auto transition-all duration-300 ease-in-out" aria-label="Analysis controls">
