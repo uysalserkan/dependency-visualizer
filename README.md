@@ -1,142 +1,61 @@
 # Dependency Visualizer
 
-A modern web application for visualizing import dependencies in **Python, JavaScript, TypeScript, Go, Java, Ruby, Rust, and C++** projects. Understand your project structure through interactive, beautiful graphs.
+Make dependency risk visible before it becomes production risk.
+
+Dependency Visualizer gives engineering leaders and platform teams a real-time architecture lens across large codebases. It surfaces hidden coupling, critical dependency paths, and structural risk so teams can plan change with confidence, improve governance, and reduce delivery risk.
 
 ![Main Screenshot](imgs/main.png)
-
-**Supported Languages:**
-- **Python** (`.py`) - Full AST parsing with relative/absolute import resolution
-- **JavaScript** (`.js`, `.jsx`, `.mjs`, `.cjs`) - ES6 imports, CommonJS require, dynamic imports
-- **TypeScript** (`.ts`, `.tsx`) - All JS features + type imports, path aliases (`@/`, `~/`)
-- **Go** (`.go`) - Module-based imports, stdlib detection, internal packages
-- **Java** (`.java`) - Maven/Gradle/Plain Java projects, package-based resolution, static imports
-- **Ruby** (`.rb`) - require/require_relative, gem detection
-- **Rust** (`.rs`) - use/mod statements, crate detection
-- **C++** (`.cpp`, `.hpp`, `.cc`, `.h`) - #include directives, system/local headers
 
 ![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)
 ![React](https://img.shields.io/badge/React-18.3+-cyan.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue.svg)
 
-## Features
+## Enterprise Value
 
-### Core Features (Phase 1)
-- ✨ **Interactive Graph Visualization** - Explore dependencies with zoom, pan, and click interactions
-- 🔍 **Smart Analysis** - Detect circular dependencies, isolated modules, and import patterns
-- 📊 **Project Metrics** - Get insights into project structure and complexity
-- 🎨 **Modern UI** - Beautiful, responsive design with multiple layout algorithms
-- 🔎 **Search & Filter** - Find modules quickly and filter external packages
-- ⚡ **Fast** - Analyze hundreds of files in seconds using Python AST parsing
-- 🔧 **Extensible** - Plugin architecture ready for additional languages
+- **Reduce change failure risk** with dependency impact visibility before releases.
+- **Strengthen architecture governance** by continuously monitoring cycles, hubs, and drift.
+- **Prioritize remediation with data** using quantified health metrics and severity signals.
+- **Improve engineering velocity** by shortening code comprehension and onboarding time.
+- **Scale across portfolios** with support for large monorepos and polyglot systems.
 
-### Phase 2 Features (NEW) ✨
-- 🏆 **Module Importance Scoring** - PageRank and betweenness centrality analysis
-- 📄 **File Content Preview** - View source code directly from the graph
-- 💊 **Project Health Dashboard** - Automated health score and insights
-- 🎯 **Smart Recommendations** - Actionable advice for improving code structure
-- 📈 **Enhanced Metrics** - Detailed import statistics and hub module identification
-- 💾 **Graph Export** - Download as JSON, GraphML, or GEXF
-- 🔍 **Detailed Cycle Analysis** - In-depth circular dependency information with severity levels
-- 📊 **Import Statistics** - Average imports, most imported modules, and trends
+## Capabilities
 
-### Phase 3 Features (NEW) 🚀
-- ⚡ **Parallel Processing** - 5-10x faster analysis with multiprocessing
-- 💾 **SQLite Caching** - Persistent results across sessions
-- 🌙 **Dark Mode** - Complete theme support with toggle
-- ⌨️ **Keyboard Shortcuts** - Cmd+K for search, Esc to clear/exit
-- 🖥️ **Full Screen Mode** - Immersive graph view with one click
-- ✅ **Comprehensive Tests** - >80% code coverage
-- 🎯 **Loading Indicators** - Better UX with progress feedback
+- **Analyze architecture interactively** with searchable dependency graphs and multiple layouts.
+- **Identify business-critical modules** with PageRank, betweenness, centrality, and fan-in/out.
+- **Detect structural hotspots early** including circular dependencies and tangled SCC clusters.
+- **Inspect implementation context** with file preview and import-level detail.
+- **Operationalize quality insights** with project health metrics and recommendation signals.
+- **Standardize reporting** by exporting JSON, GraphML, GEXF, or PNG for reviews and audits.
 
-### Phase 4 Features (NEW) 🌍
-- 🌐 **Multi-Language Support** - Python, JavaScript, TypeScript, Go, and Java
-- 🎯 **Smart Import Resolution** - Relative paths, path aliases, Go modules, Maven/Gradle
-- 📦 **Repository Analysis** - Analyze projects from Git URLs (GitHub, GitLab, Bitbucket, private servers)
-- 🔌 **Plugin System** - Extensible architecture for custom parsers
-- 🛠️ **CLI Tool** - Command-line interface for CI/CD
-- 📊 **Comparison Mode** - Before/after analysis with diff
-- 🔍 **Language Detection** - Automatic multi-language identification
+## Built for Real-World Polyglot Repos
 
-## Quick Start
+Supported languages:
 
-### Using Docker (Recommended)
+- **Python** (`.py`) - full AST parsing with relative/absolute import resolution
+- **JavaScript** (`.js`, `.jsx`, `.mjs`, `.cjs`) - ES modules, CommonJS, dynamic imports
+- **TypeScript** (`.ts`, `.tsx`) - type imports and path aliases (`@/`, `~/`)
+- **Go** (`.go`) - module-aware import handling with stdlib detection
+- **Java** (`.java`) - Maven/Gradle/plain Java package resolution
+- **Ruby** (`.rb`) - `require`/`require_relative` and gem detection
+- **Rust** (`.rs`) - `use`/`mod` parsing with crate awareness
+- **C++** (`.cpp`, `.hpp`, `.cc`, `.h`) - system and local `#include` resolution
 
-```bash
-# Clone or navigate to the project
-cd dependency_visualizer
+## Why It Fits Enterprise Teams
 
-# Start all services
-docker-compose up
+- **Architecture-first workflow**: graph, metrics, and module detail in a single decision surface
+- **Risk-aware health dashboard**: objective quality and dependency risk indicators
+- **Repository flexibility**: analyze local codebases or remote Git repositories
+- **Extensible platform design**: plugin-style parser architecture for organization-specific needs
+- **Integration-ready API**: automate checks in CI pipelines and internal engineering platforms
 
-# Access the application
-# Frontend: http://localhost:5173
-# Backend API: http://localhost:8000
-# API Docs: http://localhost:8000/docs
-```
+## Getting Started (Minimal)
 
-### Manual Setup
+If you want to run it locally, see:
 
-#### Backend
-
-```bash
-cd backend
-
-# Install uv if you haven't
-# curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Install dependencies
-uv sync --dev
-
-# Run the server
-uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-**Optional – faster parsing with Go extractor:** Build the Go extractor for significantly faster analysis on large projects:
-
-```bash
-cd extractor && go build -o extractor . && cd ..
-# In backend .env: GO_EXTRACTOR_PATH=/path/to/dependency_visualizer/extractor/extractor
-```
-
-See `extractor/README.md` for details.
-
-#### Frontend
-
-```bash
-cd frontend
-
-# Install pnpm if you haven't
-# npm install -g pnpm
-
-# Install dependencies
-pnpm install
-
-# Run the development server
-pnpm dev
-```
-
-## Usage
-
-1. **Open the Application** - Navigate to `http://localhost:5173`
-
-2. **Enter Project Path** - Enter the absolute path to a Python project
-   ```
-   Example: /Users/yourname/projects/my-python-app
-   
-   Try the sample project:
-   /Users/serkan.uysal/Documents/dependency_visualizer/sample_project
-   ```
-
-3. **Analyze** - Click "Analyze Project" to generate the dependency graph
-
-4. **Explore**:
-   - Click nodes to see module details and view source code
-   - Use search to find specific modules
-   - Change layouts for different views
-   - Toggle external packages visibility
-   - View metrics, insights, and health dashboard
-   - Export graph in multiple formats
+- `docs/QUICKSTART.md` for the fastest setup path
+- `backend/README.md` and `frontend/README.md` for service-level details
+- API docs once running: `http://localhost:8000/docs`
 
 ## Architecture
 
@@ -431,50 +350,6 @@ Create tests in `backend/tests/test_ruby_resolver.py` and verify resolution work
 - ✅ **Python**: Relative imports (`.module`), absolute imports, `__init__.py` packages
 - ✅ **JavaScript/TypeScript**: Relative (`./`, `../`), path aliases (`@/`, `~/`), index files, tsconfig.json
 - ✅ **Go**: Module imports, stdlib detection, internal packages, go.mod parsing
-
-## Roadmap
-
-### ✅ Phase 1 - MVP (COMPLETE)
-- [x] Python AST parser
-- [x] File discovery with .gitignore support
-- [x] REST API (analyze, get graph)
-- [x] Interactive graph visualization
-- [x] Basic UI with Tailwind
-- [x] Docker setup
-
-### ✅ Phase 2 - Insights (COMPLETE)
-- [x] PageRank & centrality scoring
-- [x] File content preview
-- [x] Project health dashboard
-- [x] Smart insights & recommendations
-- [x] Enhanced metrics & statistics
-- [x] Graph export (JSON, GraphML, GEXF)
-- [x] Detailed cycle analysis
-
-### ✅ Phase 3 - Polish & Performance (COMPLETE)
-- [x] Parallel file parsing (5-10x faster)
-- [x] SQLite caching layer
-- [x] Dark mode support
-- [x] Keyboard shortcuts (Cmd+K, Esc)
-- [x] Comprehensive test suite (>80% coverage, optional)
-- [x] Loading indicators
-- [x] Performance optimization
-
-### ✅ Phase 4 - Extensibility (COMPLETE)
-- [x] JavaScript/TypeScript parser
-- [x] Plugin system
-- [x] Multi-language projects
-- [x] CLI tool for CI/CD
-- [x] Comparison mode (before/after)
-- [x] Language detection
-- [x] Cross-language analysis
-- [x] Plugin API documentation
-
-### Future Enhancements
-- [ ] Full AST parsing for JavaScript (acorn/babel)
-- [ ] Plugin marketplace
-- [ ] Visual comparison diff
-- [ ] Advanced impact analysis
 
 ## Performance
 
