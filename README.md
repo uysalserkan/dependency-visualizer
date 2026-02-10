@@ -6,6 +6,8 @@ Dependency Visualizer gives engineering leaders and platform teams a real-time a
 
 ![Main Screenshot](imgs/main.png)
 
+[Watch the demo](https://youtu.be/yFUHka8rtGI).
+
 ![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)
 ![React](https://img.shields.io/badge/React-18.3+-cyan.svg)
