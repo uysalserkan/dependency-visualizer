@@ -11,7 +11,7 @@ def _default_workers() -> int:
 
 workers = int(os.getenv("WEB_CONCURRENCY", _default_workers()))
 worker_class = "uvicorn.workers.UvicornWorker"
-bind = "0.0.0.0:8000"
+bind = "0.0.0.0:8250"
 keepalive = int(os.getenv("GUNICORN_KEEPALIVE", "5"))
 timeout = int(os.getenv("GUNICORN_TIMEOUT", "120"))
 graceful_timeout = int(os.getenv("GUNICORN_GRACEFUL_TIMEOUT", "30"))

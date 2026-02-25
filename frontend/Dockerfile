@@ -1,25 +1,20 @@
-FROM node:20-slim
-
+# Stage 1: build (runs natively to avoid esbuild crash under QEMU)
+FROM --platform=$BUILDPLATFORM node:20-slim AS builder
 WORKDIR /app
-
-# Enable pnpm
 RUN corepack enable
-
-# Copy dependency files
-COPY package.json ./
-COPY pnpm-lock.yaml ./
-
-# Install dependencies
+COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
-
-# Copy source code
 COPY . .
-
-# Build the application
 RUN pnpm build
 
-# Expose port
-EXPOSE 5173
+# Stage 2: run (uses TARGETPLATFORM by default; image runs on target host)
+FROM node:20-slim
+WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY . .
+COPY --from=builder /app/dist ./dist
 
-# Run the development server (for production, use nginx to serve dist/)
+EXPOSE 5173
 CMD ["pnpm", "dev", "--host"]

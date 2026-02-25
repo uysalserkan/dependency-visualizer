@@ -1,8 +1,11 @@
 # Stage 1: build Go extractor (context = repo root)
-FROM golang:1.21-alpine AS extractor-builder
+# Use BUILDPLATFORM so Go compiler runs natively (avoids lfstack.push crash when
+# building linux/amd64 on ARM64 via QEMU). Cross-compile for TARGETPLATFORM.
+FROM --platform=$BUILDPLATFORM golang:1.22-alpine AS extractor-builder
 COPY extractor /build/extractor
 WORKDIR /build/extractor
-RUN go build -o /extractor-binary .
+ARG TARGETOS TARGETARCH
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /extractor-binary .
 
 # Stage 2: Python backend
 FROM python:3.11-slim
@@ -17,14 +20,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends git \
 COPY --from=extractor-builder /extractor-binary /usr/local/bin/extractor
 RUN chmod +x /usr/local/bin/extractor
 
-# Install uv
-RUN pip install uv
-
 # Copy dependency files (paths relative to repo root when context is .)
-COPY backend/pyproject.toml ./
+COPY backend/pyproject.toml backend/requirements.txt ./
 
-# Install dependencies
-RUN uv sync --no-dev
+# Install dependencies (use pip instead of uv - uv segfaults under QEMU when cross-building amd64 on ARM64)
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY backend/app ./app
@@ -38,4 +38,4 @@ ENV WEB_CONCURRENCY=2
 
 EXPOSE 8000
 
-CMD ["uv", "run", "gunicorn", "app.main:app", "-c", "gunicorn_conf.py"]
+CMD ["gunicorn", "app.main:app", "-c", "gunicorn_conf.py"]
