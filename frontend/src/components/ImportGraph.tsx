@@ -54,7 +54,7 @@ export function ImportGraph({ onSuccessCallback }: ImportGraphProps = {}) {
     <div className="rounded-2xl border border-gray-200 dark:border-white/10 backdrop-blur-md bg-gray-50 dark:bg-white/5 p-6 space-y-4">
       <label
         className={cn(
-          'group flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-all duration-200',
+          'group flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition duration-200',
           'border-gray-300 dark:border-white/10 bg-gray-100 dark:bg-black/30 text-gray-700 dark:text-white/70 hover:border-gray-400 dark:hover:border-white/20 hover:bg-gray-200 dark:hover:bg-black/40',
           isDragging && 'border-purple-400/60 bg-purple-500/10 text-purple-700 dark:text-white'
         )}

@@ -127,14 +127,14 @@ export function ImportListModal({
               {list.map(({ node, edge }) => {
                 const badge = typeBadge(node)
                 const label = node.label || (node.file_path.split(/[/\\]/).pop() ?? node.file_path)
-                const hoverRing = isOutgoing ? 'focus:ring-indigo-500 hover:border-indigo-500/30 hover:bg-indigo-500/10' : 'focus:ring-violet-500 hover:border-violet-500/30 hover:bg-violet-500/10'
+                const hoverRing = isOutgoing ? 'focus-visible:ring-indigo-500 hover:border-indigo-500/30 hover:bg-indigo-500/10' : 'focus-visible:ring-violet-500 hover:border-violet-500/30 hover:bg-violet-500/10'
                 const iconColor = isOutgoing ? 'text-indigo-500' : 'text-violet-500'
                 return (
                   <li key={node.id}>
                     <button
                       type="button"
                       onClick={() => handleRowClick(node)}
-                      className={`w-full flex items-center gap-3 py-2.5 px-3 rounded-xl text-left border border-transparent ${hoverRing} dark:hover:bg-opacity-10 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900`}
+                      className={`w-full flex items-center gap-3 py-2.5 px-3 rounded-xl text-left border border-transparent ${hoverRing} dark:hover:bg-opacity-10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900`}
                     >
                       <span className={`${iconColor} shrink-0`} aria-hidden>
                         <Icon className="w-4 h-4" />

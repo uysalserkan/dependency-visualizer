@@ -95,7 +95,7 @@ export function EntryPointsModal({
                     <button
                       type="button"
                       onClick={() => handleRowClick(node)}
-                      className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl text-left border border-transparent hover:border-emerald-500/30 hover:bg-emerald-500/10 dark:hover:bg-emerald-500/10 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+                      className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl text-left border border-transparent hover:border-emerald-500/30 hover:bg-emerald-500/10 dark:hover:bg-emerald-500/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
                     >
                       <FileCode className="w-4 h-4 text-emerald-500 shrink-0" aria-hidden />
                       <div className="min-w-0 flex-1">

@@ -38,7 +38,21 @@ function buildTree(nodes: Node[], projectPath: string): TreeNode {
       current = next
     }
   }
-  return root
+
+  // Flatten single root directory if it's the only thing at the root
+  let currentRoot = root
+  while (currentRoot.children.size === 1) {
+    const onlyChildName = Array.from(currentRoot.children.keys())[0]
+    const onlyChild = currentRoot.children.get(onlyChildName)!
+    if (onlyChild.children.size > 0 || !onlyChild.node) {
+      // It's a directory, so we can flatten it
+      currentRoot = onlyChild
+    } else {
+      break
+    }
+  }
+
+  return currentRoot
 }
 
 function sortTreeNodes(map: Map<string, TreeNode>): TreeNode[] {
@@ -136,13 +150,13 @@ function TreeItem({
           'py-1.5 pr-1.5',
           isDir
             ? cn(
-                'text-gray-600 dark:text-slate-400 hover:bg-gray-100/80 dark:hover:bg-white/[0.06] hover:text-gray-900 dark:hover:text-slate-200',
-                isFolderSelected && 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-l-2 border-indigo-500 dark:border-indigo-400'
-              )
+              'text-gray-600 dark:text-slate-400 hover:bg-gray-100/80 dark:hover:bg-white/[0.06] hover:text-gray-900 dark:hover:text-slate-200',
+              isFolderSelected && 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-l-2 border-indigo-500 dark:border-indigo-400'
+            )
             : cn(
-                'text-gray-700 dark:text-slate-300 hover:bg-gray-100/80 dark:hover:bg-white/[0.06]',
-                isSelected && 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-l-2 border-indigo-500 dark:border-indigo-400 font-medium'
-              )
+              'text-gray-700 dark:text-slate-300 hover:bg-gray-100/80 dark:hover:bg-white/[0.06]',
+              isSelected && 'bg-indigo-500/10 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-l-2 border-indigo-500 dark:border-indigo-400 font-medium'
+            )
         )}
         style={{ paddingLeft: `${8 + depth * 16}px` }}
         onClick={handleRowClick}
@@ -249,8 +263,8 @@ export function ProjectFolderTree() {
 
   const root = useMemo(() => {
     if (!analysis?.nodes) return null
-    return buildTree(analysis.nodes, analysis.project_path)
-  }, [analysis?.nodes, analysis?.project_path])
+    return buildTree(analysis.nodes, analysis.root_path || analysis.project_path)
+  }, [analysis?.nodes, analysis?.project_path, analysis?.root_path])
 
   const folderPathsWithFiles = useMemo(() => {
     if (!analysis?.nodes) return new Set<string>()
@@ -258,10 +272,10 @@ export function ProjectFolderTree() {
     analysis.nodes
       .filter((n) => n.node_type === 'module')
       .forEach((n) => {
-        set.add(getFolderPath(getRelativePath(n.file_path, analysis.project_path)))
+        set.add(getFolderPath(getRelativePath(n.file_path, analysis.root_path || analysis.project_path)))
       })
     return set
-  }, [analysis?.nodes, analysis?.project_path])
+  }, [analysis?.nodes, analysis?.project_path, analysis?.root_path])
 
   if (!analysis || !root) return null
 

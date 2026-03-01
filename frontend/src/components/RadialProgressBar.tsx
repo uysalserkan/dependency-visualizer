@@ -29,7 +29,7 @@ export function RadialProgressBar({ score }: RadialProgressBarProps) {
           cy="60"
         />
         <circle
-          className={`transform -rotate-90 origin-center transition-all duration-500 ease-out ${color}`}
+          className={`transform -rotate-90 origin-center transition duration-500 ease-out ${color}`}
           strokeWidth="10"
           strokeDasharray={circumference}
           strokeDashoffset={offset}

@@ -39,7 +39,7 @@ function ClusterNodeComponent(props: NodeProps) {
         type="button"
         onClick={handleClick}
         className={cn(
-          'flex items-center gap-2 rounded-xl border-2 border-dashed transition-all text-left',
+          'flex items-center gap-2 rounded-xl border-2 border-dashed transition text-left',
           showLabelsLOD ? 'px-3 py-2 min-w-[120px]' : 'p-2',
           'bg-white/80 dark:bg-slate-800/80',
           isDark

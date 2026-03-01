@@ -79,7 +79,7 @@ export function FilePreviewModal({ analysisId, filePath, projectPath, onClose }:
         <div className="flex-1 overflow-auto p-4">
           {isLoading && (
             <div className="flex items-center justify-center h-full">
-              <div className="text-slate-600">Loading...</div>
+              <div className="text-slate-600">Loading…</div>
             </div>
           )}
 

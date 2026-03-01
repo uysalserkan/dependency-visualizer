@@ -85,7 +85,7 @@ function ModuleNodeComponent(props: NodeProps) {
       <Handle type="target" position={Position.Top} className="!border-0 !w-0 !h-0 !min-w-0 !min-h-0" />
       <div
         className={cn(
-          'flex items-center justify-center border box-border transition-all',
+          'flex items-center justify-center border box-border transition',
           shapeClass,
           d.dimmed === true && 'opacity-20',
           d.highlighted === true && 'ring-2 ring-amber-500 ring-offset-2 ring-offset-transparent',

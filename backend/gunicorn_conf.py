@@ -6,7 +6,7 @@ import os
 
 def _default_workers() -> int:
     cpu = multiprocessing.cpu_count()
-    return max(2, (cpu * 2) + 1)
+    return 1
 
 
 workers = int(os.getenv("WEB_CONCURRENCY", _default_workers()))

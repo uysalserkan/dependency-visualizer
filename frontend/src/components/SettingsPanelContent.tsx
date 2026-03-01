@@ -107,7 +107,7 @@ function SegmentedControl<T extends string, O extends { id: T }>({
             onClick={() => onChange(optionValue(opt))}
             aria-pressed={isActive}
             className={cn(
-              'flex-1 min-w-0 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-md text-xs font-medium transition-all',
+              'flex-1 min-w-0 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-md text-xs font-medium transition',
               isActive
                 ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
                 : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
@@ -156,7 +156,7 @@ function Switch({
         aria-checked={checked}
         onClick={onToggle}
         className={cn(
-          'shrink-0 relative inline-flex h-6 w-10 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900',
+          'shrink-0 relative inline-flex h-6 w-10 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900',
           checked ? 'bg-indigo-500' : 'bg-gray-300 dark:bg-slate-600'
         )}
       >
@@ -268,7 +268,7 @@ export function SettingsPanelContent() {
           <button
             type="button"
             onClick={resetDisplay}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium text-gray-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium text-gray-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
             aria-label="Reset display to defaults"
             title="Reset display to defaults"
           >
@@ -438,7 +438,7 @@ export function SettingsPanelContent() {
                   type="button"
                   onClick={() => setGraphBackground('dots')}
                   className={cn(
-                    'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900',
+                    'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-xs font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900',
                     graphBackground === 'dots'
                       ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
                       : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
@@ -453,7 +453,7 @@ export function SettingsPanelContent() {
                   type="button"
                   onClick={() => setGraphBackground('grid')}
                   className={cn(
-                    'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900',
+                    'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-xs font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900',
                     graphBackground === 'grid'
                       ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
                       : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'

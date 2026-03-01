@@ -141,6 +141,7 @@ export interface InsightsResponse {
 export interface AnalysisResult {
   id: string
   project_path: string
+  root_path?: string
   nodes: Node[]
   edges: Edge[]
   metrics: GraphMetrics

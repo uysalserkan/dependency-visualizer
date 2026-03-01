@@ -101,7 +101,7 @@ export function CodePreview({ filePath, onClose }: CodePreviewProps) {
         <button
           onClick={onClose}
           className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-        >
+         aria-label="Close">
           <X className="w-5 h-5" />
         </button>
       </div>
@@ -110,7 +110,7 @@ export function CodePreview({ filePath, onClose }: CodePreviewProps) {
       <div className="flex-1 overflow-auto">
         {loading && (
           <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-            Loading...
+            Loading…
           </div>
         )}
 

@@ -23,7 +23,7 @@ export function CollapsibleSection({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-left bg-gray-100/80 dark:bg-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:ring-inset"
+        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-left bg-gray-100/80 dark:bg-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-inset"
         aria-expanded={open}
         aria-controls={`collapsible-${id}`}
         id={`collapsible-${id}-button`}
@@ -44,7 +44,7 @@ export function CollapsibleSection({
         role="region"
         aria-labelledby={`collapsible-${id}-button`}
         className={cn(
-          'transition-all duration-200 ease-out',
+          'transition duration-200 ease-out',
           open ? 'visible mt-2' : 'hidden'
         )}
       >

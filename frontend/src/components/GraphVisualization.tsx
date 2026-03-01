@@ -43,7 +43,7 @@ export function filterNodesAndEdgesByFolder(
   showStdlibNodes: boolean,
   showExternalPackages: boolean
 ): { nodes: ApiNode[]; edges: ApiEdge[] } {
-  const projectPath = analysis.project_path
+  const projectPath = analysis.root_path || analysis.project_path
 
   let internalNodes: ApiNode[]
   if (!selectedFolderPath) {
@@ -298,7 +298,7 @@ function GraphFlow({
       const apiNode = nodeById.get(nodeId)
       const clusterIdForSelected =
         apiNode != null
-          ? `${CLUSTER_ID_PREFIX}${getFolderPath(getRelativePath(apiNode.file_path, analysis.project_path))}`
+          ? `${CLUSTER_ID_PREFIX}${getFolderPath(getRelativePath(apiNode.file_path, analysis.root_path || analysis.project_path))}`
           : null
       const isEdgeConnected = (source: string, target: string) =>
         connectedIds.has(source) ||
@@ -327,7 +327,7 @@ function GraphFlow({
         }))
       )
     },
-    [analysis.project_path, filteredEdges, nodeById, setNodes, setEdges]
+    [(analysis.root_path || analysis.project_path), filteredEdges, nodeById, setNodes, setEdges]
   )
 
   const clearHighlight = useCallback(() => {
@@ -434,7 +434,7 @@ function GraphFlow({
       return
     }
     applyHighlight(selectedNode.id)
-    const folderPath = getFolderPath(getRelativePath(selectedNode.file_path, analysis.project_path))
+    const folderPath = getFolderPath(getRelativePath(selectedNode.file_path, analysis.root_path || analysis.project_path))
     const focusNodeId =
       collapsedFolders.includes(folderPath) ? `${CLUSTER_ID_PREFIX}${folderPath}` : selectedNode.id
     setTimeout(() => {
@@ -445,7 +445,7 @@ function GraphFlow({
         maxZoom: 1.5,
       })
     }, 0)
-  }, [selectedNode?.id, selectedNode?.file_path, analysis.project_path, collapsedFolders, applyHighlight, clearHighlight, fitView])
+  }, [selectedNode?.id, selectedNode?.file_path, (analysis.root_path || analysis.project_path), collapsedFolders, applyHighlight, clearHighlight, fitView])
 
   const onNodeMouseEnter = useCallback(
     (ev: React.MouseEvent, node: Node) => {
@@ -629,7 +629,7 @@ function GraphFlow({
                 <button
                   type="button"
                   onClick={() => setIsToolboxOpen(true)}
-                  className="p-2 rounded-lg border border-transparent bg-indigo-500 text-white shadow-md hover:bg-indigo-600 transition-all active:scale-95"
+                  className="p-2 rounded-lg border border-transparent bg-indigo-500 text-white shadow-md hover:bg-indigo-600 transition active:scale-95"
                   aria-label="Open graph controls"
                   title="Graph Controls"
                 >
@@ -734,10 +734,10 @@ export function GraphVisualization({ analysis, onOpenSettings }: GraphVisualizat
       getEffectiveNodesAndEdges(
         filteredNodes,
         filteredEdges,
-        analysis.project_path,
+        (analysis.root_path || analysis.project_path),
         new Set(collapsedFolders)
       ),
-    [filteredNodes, filteredEdges, analysis.project_path, collapsedFolders]
+    [filteredNodes, filteredEdges, (analysis.root_path || analysis.project_path), collapsedFolders]
   )
 
   const setRef = useCallback(

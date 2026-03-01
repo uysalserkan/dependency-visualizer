@@ -68,13 +68,14 @@ function App() {
     // Only run once on mount
     const params = new URLSearchParams(window.location.search)
     const repoUrl = params.get('repo')
+    const branchParam = params.get('branch')
 
     if (repoUrl && !analysis) {
       // Clean up URL to remove the query param so refresh doesn't re-trigger (optional but good UX)
       // window.history.replaceState({}, '', window.location.pathname)
 
       analyzeRepository(
-        { repository_url: repoUrl },
+        { repository_url: repoUrl, ...(branchParam && { branch: branchParam }) },
         {
           onSuccess: (data) => setAnalysis(data),
           onError: (error) => {
@@ -124,7 +125,7 @@ function App() {
         <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-white/80 dark:bg-slate-950/80 backdrop-blur-md">
           <div className="flex flex-col items-center gap-4">
             <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
-            <p className="text-lg font-medium text-gray-700 dark:text-slate-300">Analyzing Repository...</p>
+            <p className="text-lg font-medium text-gray-700 dark:text-slate-300">Analyzing Repository…</p>
             <p className="text-sm text-gray-500 dark:text-slate-500">Cloning and processing dependencies</p>
           </div>
         </div>
@@ -200,7 +201,7 @@ function App() {
                         href={GITHUB_REPO_URL}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
                         aria-label="Star on GitHub"
                       >
                         <Star className="w-4 h-4" aria-hidden />
@@ -210,7 +211,7 @@ function App() {
                     <button
                       type="button"
                       onClick={() => setSettingsOpen(true)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
                       aria-label="Open settings"
                     >
                       <Settings className="w-4 h-4" aria-hidden />
@@ -223,7 +224,7 @@ function App() {
                     <button
                       type="button"
                       onClick={() => setSourceImportOpen(true)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
                       aria-label="Analyze or import"
                     >
                       <FolderPlus className="w-4 h-4" aria-hidden />
@@ -233,7 +234,7 @@ function App() {
                     <button
                       type="button"
                       onClick={() => setSettingsOpen(true)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
                       aria-label="Open settings"
                     >
                       <Settings className="w-4 h-4" aria-hidden />
@@ -271,7 +272,7 @@ function App() {
                   <button
                     type="button"
                     onClick={() => setSourceImportOpen(true)}
-                    className="inline-flex items-center gap-3 px-8 py-4 rounded-xl text-base font-semibold text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 transition-colors shadow-lg"
+                    className="inline-flex items-center gap-3 px-8 py-4 rounded-xl text-base font-semibold text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900 transition-colors shadow-lg"
                     aria-label="Analyze project"
                   >
                     <FolderPlus className="w-5 h-5" aria-hidden />
@@ -299,16 +300,16 @@ function App() {
           </div>
         ) : (
           <div
-            className={`transition-all duration-300 ease-in-out min-h-0 ${isFullScreen ? 'fixed inset-0 z-40 bg-gray-50 dark:bg-slate-950 p-4' : 'flex flex-col lg:flex-row gap-5 max-md:h-[calc(100svh-120px)] md:h-[calc(100vh-120px)] lg:overflow-hidden'}`}
+            className={`transition duration-300 ease-in-out min-h-0 ${isFullScreen ? 'fixed inset-0 z-40 bg-gray-50 dark:bg-slate-950 p-4' : 'flex flex-col lg:flex-row gap-5 max-md:h-[calc(100svh-120px)] md:h-[calc(100vh-120px)] lg:overflow-hidden'}`}
           >
             {!isFullScreen && isProjectTreeOpen && (
-              <aside className="hidden lg:flex lg:w-72 shrink-0 flex-col min-h-0 overflow-y-auto transition-all duration-300 ease-in-out" aria-label="Analysis controls">
+              <aside className="hidden lg:flex lg:w-72 shrink-0 flex-col min-h-0 overflow-y-auto transition duration-300 ease-in-out" aria-label="Analysis controls">
                 <ProjectFolderTree />
               </aside>
             )}
 
             <section
-              className={`transition-all duration-300 flex flex-col gap-2 min-h-0 flex-1 min-w-0 ${isFullScreen ? 'h-full w-full' : 'lg:h-full'}`}
+              className={`transition duration-300 flex flex-col gap-2 min-h-0 flex-1 min-w-0 ${isFullScreen ? 'h-full w-full' : 'lg:h-full'}`}
               aria-label="Main view"
             >
               <div
@@ -319,7 +320,7 @@ function App() {
                     <button
                       type="button"
                       onClick={toggleProjectTree}
-                      className={`p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg hover:bg-gray-100 dark:hover:bg-slate-800/80 transition-all active:scale-95 ${isProjectTreeOpen ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-slate-400'}`}
+                      className={`p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg hover:bg-gray-100 dark:hover:bg-slate-800/80 transition active:scale-95 ${isProjectTreeOpen ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-slate-400'}`}
                       aria-label={isProjectTreeOpen ? 'Hide files' : 'Show files'}
                       title={isProjectTreeOpen ? 'Hide files' : 'Show files'}
                     >
@@ -333,7 +334,7 @@ function App() {
                     <button
                       type="button"
                       onClick={toggleMetricsPanel}
-                      className={`p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg hover:bg-gray-100 dark:hover:bg-slate-800/80 transition-all active:scale-95 ${isMetricsPanelOpen ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-slate-400'}`}
+                      className={`p-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/80 backdrop-blur-xl shadow-lg hover:bg-gray-100 dark:hover:bg-slate-800/80 transition active:scale-95 ${isMetricsPanelOpen ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-slate-400'}`}
                       aria-label={isMetricsPanelOpen ? 'Hide metrics' : 'Show metrics'}
                       title={isMetricsPanelOpen ? 'Hide metrics' : 'Show metrics'}
                     >
@@ -369,7 +370,7 @@ function App() {
             </section>
 
             {!isFullScreen && isMetricsPanelOpen && (
-              <aside className="hidden lg:block lg:w-80 shrink-0 space-y-5 overflow-y-auto transition-all duration-300 ease-in-out" aria-label="Metrics and insights">
+              <aside className="hidden lg:block lg:w-80 shrink-0 space-y-5 overflow-y-auto transition duration-300 ease-in-out" aria-label="Metrics and insights">
                 <MetricsPanel />
               </aside>
             )}

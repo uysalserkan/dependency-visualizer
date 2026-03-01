@@ -241,6 +241,7 @@ class AnalysisService:
                 result = AnalysisResult(
                     id=cache_key,
                     project_path=str(path),
+                    root_path=str(path.resolve()),
                     nodes=nodes,
                     edges=graph_builder.get_edges(),
                     metrics=metrics,
@@ -306,6 +307,7 @@ class AnalysisService:
             repo_result = AnalysisResult(
                 id=cache_id,
                 project_path=repository_url,
+                root_path=str(clone_path.resolve()),
                 nodes=result.nodes,
                 edges=result.edges,
                 metrics=result.metrics,
@@ -349,6 +351,7 @@ class AnalysisService:
             zip_result = AnalysisResult(
                 id=zip_analysis_id,
                 project_path=filename,
+                root_path=str(extract_path.resolve()),
                 nodes=result.nodes,
                 edges=result.edges,
                 metrics=result.metrics,
@@ -398,7 +401,7 @@ class AnalysisService:
         nodes = builder.get_nodes(pagerank, betweenness)
         edges = builder.get_edges()
         analysis_id = str(uuid.uuid4())
-        result = AnalysisResult(id=analysis_id, project_path=project_path, nodes=nodes, edges=edges, metrics=metrics)
+        result = AnalysisResult(id=analysis_id, project_path=project_path, root_path=project_path, nodes=nodes, edges=edges, metrics=metrics)
         self.cache.save(result)
         self._cache_in_memory(analysis_id, (result, analyzer, builder))
         return result

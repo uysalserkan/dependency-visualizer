@@ -50,14 +50,14 @@ export function GraphFloatingControls({ className = '', showLabels = false }: Gr
   // Desktop: Modern Glassmorphism Island with Horizontal Scroll support
   const containerClasses = showLabels
     ? `flex flex-col gap-5 ${className}`
-    : `flex flex-row items-center gap-2 sm:gap-3 px-3 h-14 rounded-full border border-gray-200 dark:border-white/10 bg-white/80 dark:bg-slate-900/70 backdrop-blur-md shadow-2xl transition-all duration-300 w-auto max-w-full z-20 overflow-x-auto no-scrollbar select-none ${className}`;
+    : `flex flex-row items-center gap-2 sm:gap-3 px-3 h-14 rounded-full border border-gray-200 dark:border-white/10 bg-white/80 dark:bg-slate-900/70 backdrop-blur-md shadow-2xl transition duration-300 w-auto max-w-full z-20 overflow-x-auto no-scrollbar select-none ${className}`;
 
   // Individual control container style
-  const desktopControlClasses = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100/80 dark:bg-white/5 border border-gray-200 dark:border-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 hover:border-gray-300 dark:hover:border-white/10 transition-all focus-within:ring-2 focus-within:ring-indigo-500/40 shrink-0 min-w-0";
+  const desktopControlClasses = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100/80 dark:bg-white/5 border border-gray-200 dark:border-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 hover:border-gray-300 dark:hover:border-white/10 transition focus-within:ring-2 focus-within:ring-indigo-500/40 shrink-0 min-w-0";
   const mobileItemClasses = "flex flex-col gap-2 w-full";
 
   const inputContainerClasses = showLabels
-    ? "flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all"
+    ? "flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5 focus-within:ring-2 focus-within:ring-indigo-500/20 transition"
     : desktopControlClasses;
 
   return (
@@ -70,7 +70,7 @@ export function GraphFloatingControls({ className = '', showLabels = false }: Gr
     >
       {/* Search Module - Interactive Expansion */}
       <div
-        className={showLabels ? mobileItemClasses : `shrink-0 transition-all duration-300 ease-in-out cursor-pointer ${isSearchExpanded ? 'w-48 sm:w-64 lg:w-80' : 'w-10'}`}
+        className={showLabels ? mobileItemClasses : `shrink-0 transition duration-300 ease-in-out cursor-pointer ${isSearchExpanded ? 'w-48 sm:w-64 lg:w-80' : 'w-10'}`}
         onClick={handleSearchClick}
       >
         {showLabels && (
@@ -89,7 +89,7 @@ export function GraphFloatingControls({ className = '', showLabels = false }: Gr
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={showLabels || isSearchExpanded ? "Search modules…" : ""}
             aria-label="Search modules"
-            className={`w-full bg-transparent border-0 text-xs placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:ring-0 font-mono-ui transition-opacity duration-300 ${isSearchExpanded || showLabels ? 'opacity-100 w-full ml-1' : 'opacity-0 w-0 p-0 overflow-hidden'} ${showLabels ? 'text-gray-900 dark:text-white' : 'text-gray-900 dark:text-white'}`}
+            className={`w-full bg-transparent border-0 text-xs placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus-visible:ring-0 font-mono-ui transition-opacity duration-300 ${isSearchExpanded || showLabels ? 'opacity-100 w-full ml-1' : 'opacity-0 w-0 p-0 overflow-hidden'} ${showLabels ? 'text-gray-900 dark:text-white' : 'text-gray-900 dark:text-white'}`}
           />
         </div>
       </div>
@@ -110,7 +110,7 @@ export function GraphFloatingControls({ className = '', showLabels = false }: Gr
               value={layoutName}
               onChange={(e) => setLayoutName(e.target.value)}
               aria-label="Graph layout"
-              className={`bg-transparent border-0 text-xs focus:outline-none focus:ring-0 cursor-pointer font-mono-ui appearance-none z-10 ${showLabels ? 'w-full text-gray-700 dark:text-gray-200' : 'w-full sm:w-auto pr-4 text-gray-700 dark:text-white/80'} ${!showLabels ? 'hidden sm:block' : ''}`}
+              className={`bg-transparent border-0 text-xs focus:outline-none focus-visible:ring-0 cursor-pointer font-mono-ui appearance-none z-10 ${showLabels ? 'w-full text-gray-700 dark:text-gray-200' : 'w-full sm:w-auto pr-4 text-gray-700 dark:text-white/80'} ${!showLabels ? 'hidden sm:block' : ''}`}
             >
               {layouts.map((layout) => (
                 <option key={layout.id} value={layout.id} className="bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono-ui">
@@ -139,7 +139,7 @@ export function GraphFloatingControls({ className = '', showLabels = false }: Gr
               value={heatmapMode}
               onChange={(e) => setHeatmapMode(e.target.value as HeatmapMode)}
               aria-label="Refactor hotspots"
-              className={`bg-transparent border-0 text-xs focus:outline-none focus:ring-0 cursor-pointer font-mono-ui appearance-none z-10 ${showLabels ? 'w-full text-gray-700 dark:text-gray-200' : 'w-full sm:w-auto pr-4 text-gray-700 dark:text-white/80'} ${!showLabels ? 'hidden sm:block' : ''}`}
+              className={`bg-transparent border-0 text-xs focus:outline-none focus-visible:ring-0 cursor-pointer font-mono-ui appearance-none z-10 ${showLabels ? 'w-full text-gray-700 dark:text-gray-200' : 'w-full sm:w-auto pr-4 text-gray-700 dark:text-white/80'} ${!showLabels ? 'hidden sm:block' : ''}`}
             >
               {heatmapModeOptions.map((o) => (
                 <option key={o.id} value={o.id} className="bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono-ui">
@@ -160,7 +160,7 @@ export function GraphFloatingControls({ className = '', showLabels = false }: Gr
         <button
           type="button"
           onClick={requestFit}
-          className={`${showLabels ? 'flex-1 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5' : 'p-2 sm:p-2.5 bg-gray-100/80 dark:bg-white/5 border border-gray-200 dark:border-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 hover:border-gray-300 dark:hover:border-white/10'} flex items-center justify-center gap-2 rounded-full text-gray-600 dark:text-white/70 hover:text-gray-900 dark:hover:text-white transition-all active:scale-95 shrink-0`}
+          className={`${showLabels ? 'flex-1 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5' : 'p-2 sm:p-2.5 bg-gray-100/80 dark:bg-white/5 border border-gray-200 dark:border-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 hover:border-gray-300 dark:hover:border-white/10'} flex items-center justify-center gap-2 rounded-full text-gray-600 dark:text-white/70 hover:text-gray-900 dark:hover:text-white transition active:scale-95 shrink-0`}
           aria-label="Fit graph to view"
           title="Fit to view"
         >
@@ -170,7 +170,7 @@ export function GraphFloatingControls({ className = '', showLabels = false }: Gr
         <button
           type="button"
           onClick={toggleFullScreen}
-          className={`${showLabels ? 'flex-1 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5' : 'p-2 sm:p-2.5 bg-gray-100/80 dark:bg-white/5 border border-gray-200 dark:border-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 hover:border-gray-300 dark:hover:border-white/10'} flex items-center justify-center gap-2 rounded-lg text-gray-600 dark:text-slate-300 transition-all active:scale-95 shrink-0`}
+          className={`${showLabels ? 'flex-1 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/5' : 'p-2 sm:p-2.5 bg-gray-100/80 dark:bg-white/5 border border-gray-200 dark:border-white/5 hover:bg-gray-200/80 dark:hover:bg-white/10 hover:border-gray-300 dark:hover:border-white/10'} flex items-center justify-center gap-2 rounded-lg text-gray-600 dark:text-slate-300 transition active:scale-95 shrink-0`}
           aria-label={isFullScreen ? 'Exit full screen' : 'Enter full screen'}
           title={isFullScreen ? 'Exit full screen (ESC)' : 'Enter full screen'}
         >

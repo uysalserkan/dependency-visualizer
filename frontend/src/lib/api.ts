@@ -22,7 +22,10 @@ export const api = {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
-      throw new Error(error.detail || 'Failed to analyze project')
+      const message = error?.error?.message ||
+        (Array.isArray(error?.detail) ? error.detail[0]?.msg : error?.detail) ||
+        'Failed to analyze project'
+      throw new Error(message)
     }
 
     return response.json()
@@ -43,7 +46,9 @@ export const api = {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
-      const message = typeof error.detail === 'string' ? error.detail : error.detail?.message ?? 'Failed to analyze repository'
+      const message = error?.error?.message ||
+        (Array.isArray(error?.detail) ? error.detail[0]?.msg : error?.detail) ||
+        'Failed to analyze repository'
       throw new Error(message)
     }
 
@@ -59,7 +64,10 @@ export const api = {
     })
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
-      throw new Error(error.detail || 'Failed to analyze ZIP')
+      const message = error?.error?.message ||
+        (Array.isArray(error?.detail) ? error.detail[0]?.msg : error?.detail) ||
+        'Failed to analyze ZIP'
+      throw new Error(message)
     }
     return response.json()
   },
@@ -69,7 +77,10 @@ export const api = {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
-      throw new Error(error.detail || 'Failed to fetch analysis')
+      const message = error?.error?.message ||
+        (Array.isArray(error?.detail) ? error.detail[0]?.msg : error?.detail) ||
+        'Failed to fetch analysis'
+      throw new Error(message)
     }
 
     return response.json()
@@ -82,7 +93,10 @@ export const api = {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
-      throw new Error(error.detail || 'Failed to delete analysis')
+      const message = error?.error?.message ||
+        (Array.isArray(error?.detail) ? error.detail[0]?.msg : error?.detail) ||
+        'Failed to delete analysis'
+      throw new Error(message)
     }
   },
 
@@ -93,7 +107,10 @@ export const api = {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
-      throw new Error(error.detail || 'Failed to fetch file preview')
+      const message = error?.error?.message ||
+        (Array.isArray(error?.detail) ? error.detail[0]?.msg : error?.detail) ||
+        'Failed to fetch file preview'
+      throw new Error(message)
     }
 
     return response.json()
@@ -106,7 +123,10 @@ export const api = {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
-      throw new Error(typeof error.detail === 'string' ? error.detail : error.detail?.message ?? 'Failed to fetch blame')
+      const message = error?.error?.message ||
+        (Array.isArray(error?.detail) ? error.detail[0]?.msg : error?.detail) ||
+        'Failed to fetch blame'
+      throw new Error(message)
     }
 
     return response.json()
@@ -117,7 +137,10 @@ export const api = {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
-      throw new Error(error.detail || 'Failed to export graph')
+      const message = error?.error?.message ||
+        (Array.isArray(error?.detail) ? error.detail[0]?.msg : error?.detail) ||
+        'Failed to export graph'
+      throw new Error(message)
     }
 
     return response.blob()
@@ -128,7 +151,10 @@ export const api = {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
-      throw new Error(error.detail || 'Failed to fetch insights')
+      const message = error?.error?.message ||
+        (Array.isArray(error?.detail) ? error.detail[0]?.msg : error?.detail) ||
+        'Failed to fetch insights'
+      throw new Error(message)
     }
 
     return response.json()
@@ -146,7 +172,10 @@ export const api = {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
-      throw new Error(error.detail || 'Failed to import graph')
+      const message = error?.error?.message ||
+        (Array.isArray(error?.detail) ? error.detail[0]?.msg : error?.detail) ||
+        'Failed to import graph'
+      throw new Error(message)
     }
 
     return response.json()
@@ -164,7 +193,10 @@ export const api = {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
-      throw new Error(error.detail || 'Failed to analyze impact')
+      const message = error?.error?.message ||
+        (Array.isArray(error?.detail) ? error.detail[0]?.msg : error?.detail) ||
+        'Failed to analyze impact'
+      throw new Error(message)
     }
 
     return response.json()

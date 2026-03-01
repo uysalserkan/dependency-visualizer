@@ -214,6 +214,7 @@ class AnalysisResult(BaseModel):
 
     id: str = Field(..., description="Unique analysis ID")
     project_path: str = Field(..., description="Analyzed project path")
+    root_path: str | None = Field(default=None, description="Actual filesystem root path")
     nodes: list[Node] = Field(..., description="Graph nodes")
     edges: list[Edge] = Field(..., description="Graph edges")
     metrics: GraphMetrics = Field(..., description="Analysis metrics")
@@ -230,6 +231,7 @@ class AnalysisResultResponse(BaseModel):
 
     id: str = Field(..., description="Unique analysis ID")
     project_path: str = Field(..., description="Analyzed project path")
+    root_path: str | None = Field(default=None, description="Actual filesystem root path")
     nodes: list[Node] = Field(..., description="Graph nodes")
     edges: list[Edge] = Field(..., description="Graph edges")
     metrics: GraphMetrics = Field(..., description="Analysis metrics")

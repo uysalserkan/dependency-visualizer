@@ -37,7 +37,7 @@ export function ComparisonSelector({ onCompare, recentAnalyses }: ComparisonProp
           <select
             value={analysis1}
             onChange={(e) => setAnalysis1(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-transparent"
           >
             <option value="">Select analysis...</option>
             {recentAnalyses.map((analysis) => (
@@ -55,7 +55,7 @@ export function ComparisonSelector({ onCompare, recentAnalyses }: ComparisonProp
           <select
             value={analysis2}
             onChange={(e) => setAnalysis2(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-transparent"
           >
             <option value="">Select analysis...</option>
             {recentAnalyses.map((analysis) => (

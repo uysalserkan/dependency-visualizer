@@ -53,14 +53,14 @@ export function ExternalPackagesModal({ analysis, onClose, onSelectNode }: Exter
   }
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" 
-      role="dialog" 
-      aria-modal="true" 
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      role="dialog"
+      aria-modal="true"
       aria-labelledby="external-packages-title"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col border border-slate-200 dark:border-slate-700"
         onClick={(e) => e.stopPropagation()}
       >
@@ -116,7 +116,7 @@ export function ExternalPackagesModal({ analysis, onClose, onSelectNode }: Exter
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search packages..."
-                className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
                 aria-label="Search external packages"
               />
             </div>
@@ -126,11 +126,10 @@ export function ExternalPackagesModal({ analysis, onClose, onSelectNode }: Exter
               <button
                 type="button"
                 onClick={() => setSortBy('usage')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  sortBy === 'usage'
-                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-                }`}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${sortBy === 'usage'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                  }`}
                 aria-label="Sort by usage"
               >
                 <TrendingUp className="w-3.5 h-3.5 inline mr-1" aria-hidden />
@@ -139,11 +138,10 @@ export function ExternalPackagesModal({ analysis, onClose, onSelectNode }: Exter
               <button
                 type="button"
                 onClick={() => setSortBy('name')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  sortBy === 'name'
-                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-                }`}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${sortBy === 'name'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                  }`}
                 aria-label="Sort alphabetically"
               >
                 A-Z
@@ -171,7 +169,7 @@ export function ExternalPackagesModal({ analysis, onClose, onSelectNode }: Exter
                     key={pkg.id}
                     type="button"
                     onClick={() => handlePackageClick(pkg)}
-                    className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-750 hover:border-slate-300 dark:hover:border-slate-600 transition-all group"
+                    className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-750 hover:border-slate-300 dark:hover:border-slate-600 transition group"
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="w-8 h-8 rounded-lg bg-slate-500/15 flex items-center justify-center shrink-0 group-hover:bg-slate-500/25">
@@ -209,7 +207,7 @@ export function ExternalPackagesModal({ analysis, onClose, onSelectNode }: Exter
                     key={pkg.id}
                     type="button"
                     onClick={() => handlePackageClick(pkg)}
-                    className="w-full flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 hover:border-sky-300 dark:hover:border-sky-600 transition-all group"
+                    className="w-full flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 hover:border-sky-300 dark:hover:border-sky-600 transition group"
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="w-9 h-9 rounded-lg bg-sky-500/15 flex items-center justify-center shrink-0 group-hover:bg-sky-500/25">

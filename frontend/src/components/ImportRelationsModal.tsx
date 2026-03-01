@@ -133,7 +133,7 @@ export function ImportRelationsModal({
                       <button
                         type="button"
                         onClick={() => handleRowClick(node)}
-                        className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl text-left border border-transparent hover:border-indigo-500/30 hover:bg-indigo-500/10 dark:hover:bg-indigo-500/10 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+                        className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl text-left border border-transparent hover:border-indigo-500/30 hover:bg-indigo-500/10 dark:hover:bg-indigo-500/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
                       >
                         <span className="text-indigo-500 shrink-0" aria-hidden>
                           <ArrowUpRight className="w-4 h-4" />
@@ -190,7 +190,7 @@ export function ImportRelationsModal({
                       <button
                         type="button"
                         onClick={() => handleRowClick(node)}
-                        className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl text-left border border-transparent hover:border-violet-500/30 hover:bg-violet-500/10 dark:hover:bg-violet-500/10 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+                        className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl text-left border border-transparent hover:border-violet-500/30 hover:bg-violet-500/10 dark:hover:bg-violet-500/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
                       >
                         <span className="text-violet-500 shrink-0" aria-hidden>
                           <ArrowDownLeft className="w-4 h-4" />

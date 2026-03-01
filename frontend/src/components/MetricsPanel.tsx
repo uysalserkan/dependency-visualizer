@@ -166,7 +166,7 @@ export function MetricsPanel() {
                 <button 
                   type="button" 
                   onClick={() => setShowOutgoingModal(true)} 
-                  className="group bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-2xl p-4 border border-blue-500/20 flex flex-col gap-2 text-left hover:border-blue-500/40 transition-all active:scale-95"
+                  className="group bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-2xl p-4 border border-blue-500/20 flex flex-col gap-2 text-left hover:border-blue-500/40 transition active:scale-95"
                 >
                   <div className="flex items-center justify-between">
                     <ArrowUpCircle className="w-5 h-5 text-blue-500" />
@@ -178,7 +178,7 @@ export function MetricsPanel() {
                 <button 
                   type="button" 
                   onClick={() => setShowIncomingModal(true)} 
-                  className="group bg-gradient-to-br from-violet-500/10 to-violet-600/5 rounded-2xl p-4 border border-violet-500/20 flex flex-col gap-2 text-left hover:border-violet-500/40 transition-all active:scale-95"
+                  className="group bg-gradient-to-br from-violet-500/10 to-violet-600/5 rounded-2xl p-4 border border-violet-500/20 flex flex-col gap-2 text-left hover:border-violet-500/40 transition active:scale-95"
                 >
                   <div className="flex items-center justify-between">
                     <ArrowDownCircle className="w-5 h-5 text-violet-500" />
@@ -209,7 +209,7 @@ export function MetricsPanel() {
                 <button 
                   type="button" 
                   onClick={() => setShowImportRelations(true)} 
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold border border-indigo-500/30 bg-indigo-500/5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 transition-all active:scale-[0.98]"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold border border-indigo-500/30 bg-indigo-500/5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 transition active:scale-[0.98]"
                 >
                   <Network className="w-4 h-4" />
                   Explore Connections
@@ -218,7 +218,7 @@ export function MetricsPanel() {
                   <button 
                     type="button" 
                     onClick={() => setShowPreview(true)} 
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-600 hover:shadow-indigo-500/40 transition-all active:scale-[0.98]"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-600 hover:shadow-indigo-500/40 transition active:scale-[0.98]"
                   >
                     <Eye className="w-4 h-4" />
                     Open Source Code
@@ -237,7 +237,7 @@ export function MetricsPanel() {
 
               {/* Enhanced Metric Grid */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 transition-all hover:bg-blue-500/10">
+                <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 transition hover:bg-blue-500/10">
                   <div className="flex items-center gap-2 mb-2">
                     <FileCode className="w-4 h-4 text-blue-500" />
                     <span className="text-[10px] font-bold text-blue-600/70 dark:text-blue-400/70 uppercase tracking-widest">Files</span>
@@ -245,7 +245,7 @@ export function MetricsPanel() {
                   <div className="text-2xl font-black text-blue-600 dark:text-blue-400 tabular-nums">{display.total_files}</div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 transition-all hover:bg-indigo-500/10">
+                <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 transition hover:bg-indigo-500/10">
                   <div className="flex items-center gap-2 mb-2">
                     <Network className="w-4 h-4 text-indigo-500" />
                     <span className="text-[10px] font-bold text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-widest">Imports</span>
@@ -253,7 +253,7 @@ export function MetricsPanel() {
                   <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400 tabular-nums">{display.total_imports}</div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-violet-500/5 border border-violet-500/10 transition-all hover:bg-violet-500/10">
+                <div className="p-4 rounded-2xl bg-violet-500/5 border border-violet-500/10 transition hover:bg-violet-500/10">
                   <div className="flex items-center gap-2 mb-2">
                     <TrendingUp className="w-4 h-4 text-violet-500" />
                     <span className="text-[10px] font-bold text-violet-600/70 dark:text-violet-400/70 uppercase tracking-widest">Depth</span>
@@ -261,7 +261,7 @@ export function MetricsPanel() {
                   <div className="text-2xl font-black text-violet-600 dark:text-violet-400 tabular-nums">{display.max_import_depth}</div>
                 </div>
 
-                <div className={`p-4 rounded-2xl border transition-all ${display.total_cycles > 0 ? 'bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10' : 'bg-emerald-500/5 border-emerald-500/10 hover:bg-emerald-500/10'}`}>
+                <div className={`p-4 rounded-2xl border transition ${display.total_cycles > 0 ? 'bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10' : 'bg-emerald-500/5 border-emerald-500/10 hover:bg-emerald-500/10'}`}>
                   <div className="flex items-center gap-2 mb-2">
                     <Layers className={`w-4 h-4 ${display.total_cycles > 0 ? 'text-amber-500' : 'text-emerald-500'}`} />
                     <span className={`text-[10px] font-bold uppercase tracking-widest ${display.total_cycles > 0 ? 'text-amber-600/70 dark:text-amber-400/70' : 'text-emerald-600/70 dark:text-emerald-400/70'}`}>Cycles</span>
@@ -285,7 +285,7 @@ export function MetricsPanel() {
                 <div className="space-y-4">
                   <div className="w-full h-2 bg-gray-200 dark:bg-white/5 rounded-full overflow-hidden">
                     <div 
-                      className={`h-full transition-all duration-1000 ${display.total_cycles === 0 ? 'bg-emerald-500 w-full' : display.total_cycles < 5 ? 'bg-amber-500 w-2/3' : 'bg-rose-500 w-1/3'}`} 
+                      className={`h-full transition duration-1000 ${display.total_cycles === 0 ? 'bg-emerald-500 w-full' : display.total_cycles < 5 ? 'bg-amber-500 w-2/3' : 'bg-rose-500 w-1/3'}`} 
                     />
                   </div>
                   

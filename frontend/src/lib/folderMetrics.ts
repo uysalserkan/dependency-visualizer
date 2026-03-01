@@ -6,7 +6,7 @@ export function getFolderSubgraph(
   analysis: AnalysisResult,
   selectedFolderPath: string
 ): { internalNodes: Node[]; internalEdges: Edge[] } {
-  const projectPath = analysis.project_path
+  const projectPath = analysis.root_path || analysis.project_path
 
   const internalNodes = analysis.nodes.filter((n) => {
     if (n.node_type === 'external') return false

@@ -38,7 +38,7 @@ export function ExportButton() {
         <span className="hidden sm:inline">Export</span>
       </button>
 
-      <div className="absolute right-0 mt-2 w-52 rounded-xl border border-gray-200 dark:border-white/5 bg-white dark:bg-slate-900/95 backdrop-blur-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 shadow-2xl py-2" role="menu">
+      <div className="absolute right-0 mt-2 w-52 rounded-xl border border-gray-200 dark:border-white/5 bg-white dark:bg-slate-900/95 backdrop-blur-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition z-10 shadow-2xl py-2" role="menu">
         <button
           type="button"
           role="menuitem"

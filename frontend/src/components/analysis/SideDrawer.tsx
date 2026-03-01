@@ -45,7 +45,7 @@ export function SideDrawer({ open, onClose, title, children }: SideDrawerProps) 
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition-all active:scale-90"
+              className="p-2 rounded-xl text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition active:scale-90"
               aria-label="Close drawer"
             >
               <span className="text-xl">✕</span>

@@ -78,7 +78,7 @@ export function SourceAnalyzer({ onSuccessCallback }: SourceAnalyzerProps = {}) 
             aria-selected={sourceType === 'local'}
             onClick={() => setSourceType('local')}
             className={cn(
-              'flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold uppercase tracking-wide transition-all duration-200',
+              'flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold uppercase tracking-wide transition duration-200',
               sourceType === 'local'
                 ? 'bg-indigo-100 dark:bg-white/10 text-indigo-700 dark:text-white shadow-sm'
                 : 'text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white'
@@ -93,7 +93,7 @@ export function SourceAnalyzer({ onSuccessCallback }: SourceAnalyzerProps = {}) 
             aria-selected={sourceType === 'git'}
             onClick={() => setSourceType('git')}
             className={cn(
-              'flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold uppercase tracking-wide transition-all duration-200',
+              'flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold uppercase tracking-wide transition duration-200',
               sourceType === 'git'
                 ? 'bg-indigo-100 dark:bg-white/10 text-indigo-700 dark:text-white shadow-sm'
                 : 'text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white'
@@ -108,7 +108,7 @@ export function SourceAnalyzer({ onSuccessCallback }: SourceAnalyzerProps = {}) 
             aria-selected={sourceType === 'zip'}
             onClick={() => setSourceType('zip')}
             className={cn(
-              'flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold uppercase tracking-wide transition-all duration-200',
+              'flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-semibold uppercase tracking-wide transition duration-200',
               sourceType === 'zip'
                 ? 'bg-indigo-100 dark:bg-white/10 text-indigo-700 dark:text-white shadow-sm'
                 : 'text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white'
@@ -139,10 +139,13 @@ export function SourceAnalyzer({ onSuccessCallback }: SourceAnalyzerProps = {}) 
               placeholder="/path/to/your/project"
               aria-label="Project directory path"
               aria-describedby="source-hint"
-              className="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-black/40 text-gray-900 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all font-mono text-sm disabled:opacity-60"
+              className="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-black/40 text-gray-900 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 transition font-mono text-sm disabled:opacity-60"
               disabled={isPending}
             />
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Note: This only works if the backend server is running on the same machine as your files. For remote servers, please select 'ZIP' and upload the project archive instead.
+          </p>
         </div>
       ) : sourceType === 'git' ? (
         <div className="space-y-3">
@@ -162,7 +165,7 @@ export function SourceAnalyzer({ onSuccessCallback }: SourceAnalyzerProps = {}) 
               onKeyDown={handleKeyDown}
               placeholder="https://github.com/owner/repo"
               aria-label="Git repository URL (HTTPS)"
-              className="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-black/40 text-gray-900 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all font-mono text-sm disabled:opacity-60"
+              className="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-black/40 text-gray-900 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 transition font-mono text-sm disabled:opacity-60"
               disabled={isPending}
             />
           </div>
@@ -182,7 +185,7 @@ export function SourceAnalyzer({ onSuccessCallback }: SourceAnalyzerProps = {}) 
               onKeyDown={handleKeyDown}
               placeholder="main"
               aria-label="Branch, tag, or commit"
-              className="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-black/40 text-gray-900 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all font-mono text-sm disabled:opacity-60"
+              className="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-black/40 text-gray-900 dark:text-white/90 placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 transition font-mono text-sm disabled:opacity-60"
               disabled={isPending}
             />
           </div>
@@ -201,7 +204,7 @@ export function SourceAnalyzer({ onSuccessCallback }: SourceAnalyzerProps = {}) 
             accept=".zip"
             onChange={(e) => setZipFile(e.target.files?.[0] ?? null)}
             aria-label="Select .zip project archive"
-            className="w-full px-4 py-3 rounded-xl bg-white dark:bg-black/40 text-gray-900 dark:text-white/90 focus:outline-none focus:ring-2 focus:ring-purple-500/50 font-mono text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-gray-200 dark:file:bg-white/10 file:px-3 file:py-2 file:text-xs file:font-semibold file:uppercase file:tracking-wide file:text-gray-700 dark:file:text-white/80 hover:file:bg-gray-300 dark:hover:file:bg-white/20 disabled:opacity-60"
+            className="w-full px-4 py-3 rounded-xl bg-white dark:bg-black/40 text-gray-900 dark:text-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 font-mono text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-gray-200 dark:file:bg-white/10 file:px-3 file:py-2 file:text-xs file:font-semibold file:uppercase file:tracking-wide file:text-gray-700 dark:file:text-white/80 hover:file:bg-gray-300 dark:hover:file:bg-white/20 disabled:opacity-60"
             disabled={isPending}
           />
           {zipFile && (
@@ -226,17 +229,17 @@ export function SourceAnalyzer({ onSuccessCallback }: SourceAnalyzerProps = {}) 
                 : 'Analyzing project'
             : 'Analyze'
         }
-        className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-purple-500/90 to-blue-500/90 text-white font-semibold shadow-lg shadow-purple-500/20 hover:from-purple-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500/60"
+        className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-purple-500/90 to-blue-500/90 text-white font-semibold shadow-lg shadow-purple-500/20 hover:from-purple-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/60"
       >
         {isPending ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" aria-hidden />
             <span>
               {sourceType === 'git'
-                ? 'Cloning & analyzing...'
+                ? 'Cloning & analyzing…'
                 : sourceType === 'zip'
-                  ? 'Analyzing ZIP...'
-                  : 'Analyzing...'}
+                  ? 'Analyzing ZIP…'
+                  : 'Analyzing…'}
             </span>
           </>
         ) : (
