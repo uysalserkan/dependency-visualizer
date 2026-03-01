@@ -127,7 +127,7 @@ Analyze a Python project and return dependency graph with importance scores.
 }
 ```
 
-#### GET `/api/analysis/{id}/file-preview` (Phase 2)
+#### GET `/api/analysis/{id}/file-preview`
 Get file content and import details.
 
 **Query Parameters:**
@@ -144,7 +144,7 @@ Get file content and import details.
 }
 ```
 
-#### GET `/api/analysis/{id}/export` (Phase 2)
+#### GET `/api/analysis/{id}/export`
 Export graph in various formats.
 
 **Query Parameters:**
@@ -152,7 +152,7 @@ Export graph in various formats.
 
 Returns downloadable file.
 
-#### GET `/api/analysis/{id}/insights` (Phase 2)
+#### GET `/api/analysis/{id}/insights`
 Get automated insights and recommendations.
 
 **Response:**
@@ -359,7 +359,7 @@ Create tests in `backend/tests/test_ruby_resolver.py` and verify resolution work
 - **Graph Rendering**: Handles 1000+ nodes smoothly
 - **Memory**: <100MB for typical projects
 - **Caching**: Instant load for previously analyzed projects
-- **Speedup**: 5-10x faster with multiprocessing (Phase 3)
+- **Speedup**: 5-10x faster with multiprocessing
 
 ## Troubleshooting
 
@@ -386,7 +386,7 @@ Create tests in `backend/tests/test_ruby_resolver.py` and verify resolution work
 
 ## Contributing
 
-Contributions are welcome! This is an MVP with room for:
+Contributions are welcome! Areas for improvement include:
 - Additional language parsers
 - Performance optimizations
 - UI/UX improvements
