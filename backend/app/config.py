@@ -100,8 +100,7 @@ class Settings(BaseSettings):
         "gitlab.com",
         "bitbucket.org",
         "gitea.com",
-        "codeberg.org",
-        "bitbucket.int.sahibinden.com"
+        "codeberg.org"
     ]
     REPOSITORY_CLONE_TIMEOUT: int = 120  # seconds
     REPOSITORY_CLONE_DEPTH: int = 1  # 1 = shallow (latest commit), 0 = full history
